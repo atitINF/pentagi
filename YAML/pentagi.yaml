@@ -43,7 +43,7 @@ spec:
             secretKeyRef:
               name: pentagi-secrets
               key: GRAPHITI_URL
-        - name: DOCKER_SOCKET
+        - name: DOCKER_HOST
           value: "tcp://localhost:2375"
         - name: OPEN_AI_KEY
           valueFrom:
