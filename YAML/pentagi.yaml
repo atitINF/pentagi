@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pentagi
+  namespace: pentagi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pentagi
+  template:
+    metadata:
+      labels:
+        app: pentagi
+    spec:
+      containers:
+      # --- The Main App ---
+      - name: pentagi
+        image: pentagi:1.0.0
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+        ports:
+        - containerPort: 8443
+        env:
+        - name: HOME
+          value: "/opt/pentagi"
+        - name: OLLAMA_HOME
+          value: "/opt/pentagi/.ollama"
+        - name: SERVER_USE_SSL
+          value: "true"
+        - name: SERVER_PORT
+          value: "8443"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: pentagi-secrets
+              key: DATABASE_URL
+        - name: GRAPHITI_ENABLED
+          value: "true"
+        - name: GRAPHITI_URL
+          valueFrom:
+            secretKeyRef:
+              name: pentagi-secrets
+              key: GRAPHITI_URL
+        - name: DOCKER_SOCKET
+          value: "tcp://localhost:2375"
+        - name: OPEN_AI_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pentagi-secrets
+              key: OPEN_AI_KEY
+        volumeMounts:
+        - name: shared-data
+          mountPath: /opt/pentagi/data
+
+      # --- The Docker-in-Docker Sidecar ---
+      - name: dind
+        image: docker:dind
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        env:
+        - name: DOCKER_TLS_CERTDIR
+          value: ""
+        ports:
+        - containerPort: 2375
+        volumeMounts:
+        - name: shared-data
+          mountPath: /opt/pentagi/data
+
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pentagi-svc
+  namespace: pentagi
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8443
+    targetPort: 8443
+  selector:
+    app: pentagi

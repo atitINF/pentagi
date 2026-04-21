@@ -1,0 +1,33 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: pentagi-ingress
+  namespace: pentagi
+spec:
+  entryPoints:
+    - pentagi
+  routes:
+  - kind: Rule
+    # Matches everything for the PentAGI UI and API
+    match: PathPrefix(`/`)
+    priority: 10
+    services:
+    - kind: Service
+      name: pentagi-svc
+      namespace: pentagi
+      port: 8443
+      scheme: https # Set to https because internal PentAGI uses SSL
+      serversTransport: pentagi-transport
+      # High flush interval is critical for streaming logs/WebSockets
+      responseForwarding:
+        flushInterval: 1ms
+
+---
+
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: pentagi-transport
+  namespace: pentagi
+spec:
+  insecureSkipVerify: true

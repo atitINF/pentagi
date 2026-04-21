@@ -34,6 +34,7 @@ golangci-lint run --timeout=5m               # Lint
 # Code generation (run after schema changes)
 go run github.com/99designs/gqlgen --config ./gqlgen/gqlgen.yml  # GraphQL resolvers
 swag init -g ../../pkg/server/router.go -o pkg/server/docs/ --parseDependency --parseInternal --parseDepth 2 -d cmd/pentagi  # Swagger docs
+sqlc generate                                                    # Regenerate pkg/database/ from sqlc/models/*.sql query files
 ```
 
 ### Frontend (run from `frontend/`)
@@ -74,13 +75,17 @@ The full stack runs at `https://localhost:8443` when using Docker Compose. Copy 
 | `pkg/server/` | Gin router, middleware, auth (JWT/OAuth2/API tokens), Swagger |
 | `pkg/controller/` | Business logic for REST endpoints |
 | `pkg/graph/` | gqlgen GraphQL schema (`schema.graphqls`) and resolvers |
-| `pkg/database/` | GORM models, SQLC queries, goose migrations |
+| `pkg/database/` | SQLC-generated query code (`Querier` interface + implementations); GORM is used only for DB connection and goose migration bootstrapping; SQL query sources live in `backend/sqlc/models/*.sql` |
 | `pkg/providers/` | LLM provider adapters (OpenAI, Anthropic, Gemini, Bedrock, Ollama, etc.) |
 | `pkg/tools/` | Penetration testing tool integrations |
 | `pkg/docker/` | Docker SDK wrapper for sandboxed container execution |
 | `pkg/terminal/` | Terminal session and command execution management |
 | `pkg/queue/` | Async task queue |
 | `pkg/csum/` | Chain summarization for LLM context management |
+| `pkg/cast/` | `ChainAST` — parses LLM message chains into sections/body-pairs; used by `csum` to inject summarization, trim context, and validate tool-call IDs |
+| `pkg/schema/` | JSON Schema validation for tool call arguments (wraps `gojsonschema`) |
+| `pkg/system/` | Host ID generation and OS-specific utilities |
+| `pkg/templates/` | Compile-time embedded Go templates (`prompts/*.tmpl`, `graphiti/*.tmpl`); `PromptType` enum maps to template file names |
 | `pkg/graphiti/` | Knowledge graph (Neo4j via Graphiti) integration |
 | `pkg/observability/` | OpenTelemetry tracing, metrics, structured logging |
 
@@ -139,7 +144,16 @@ State is managed primarily through Apollo Client (GraphQL) with real-time update
 
 ### Code Generation
 
-When modifying `backend/pkg/graph/schema.graphqls`, re-run the gqlgen command to regenerate resolver stubs. When modifying REST handler annotations, re-run swag to update Swagger docs. When modifying `frontend/src/graphql/*.graphql` query files, re-run `npm run graphql:generate` to update TypeScript types.
+When modifying `backend/pkg/graph/schema.graphqls`, re-run the gqlgen command to regenerate resolver stubs. When modifying REST handler annotations, re-run swag to update Swagger docs. When modifying `frontend/src/graphql/*.graphql` query files, re-run `npm run graphql:generate` to update TypeScript types. When modifying SQL query files in `backend/sqlc/models/*.sql`, re-run `sqlc generate` from `backend/` to regenerate `pkg/database/`.
+
+### Per-Provider Agent Model Configuration
+
+Each LLM provider has a `backend/pkg/providers/<name>/config.yml` that maps `ProviderOptionsType` keys (e.g. `primary_agent`, `generator`, `coder`, `pentester`, `searcher`, etc.) to model name, temperature, `max_tokens`, optional `reasoning.max_tokens`, and per-token pricing. When adding a new provider, copy an existing `config.yml` as a starting point. The YAML keys must match the `ProviderOptionsType` string values defined in `pkg/providers/pconfig/config.go`.
+
+### API Explorer URLs (local Docker stack)
+
+- Swagger UI: `https://localhost:8443/api/v1/swagger/index.html`
+- GraphQL Playground: `https://localhost:8443/api/v1/graphql/playground`
 
 ### Utility Binaries
 

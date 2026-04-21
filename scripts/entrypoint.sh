@@ -5,7 +5,7 @@ export SERVER_SSL_CRT=${SERVER_SSL_CRT:-ssl/server.crt}
 SERVER_SSL_CSR=ssl/service.csr
 SERVER_SSL_CA_KEY=ssl/service_ca.key
 SERVER_SSL_CA_CRT=ssl/service_ca.crt
-OLLAMA_KEY=/root/.ollama/id_ed25519
+OLLAMA_KEY=${OLLAMA_KEY:-/opt/pentagi/.ollama/id_ed25519}
 
 if [ ! -f "$OLLAMA_KEY" ]; then
     ssh-keygen -t ed25519 -N "" -f $OLLAMA_KEY

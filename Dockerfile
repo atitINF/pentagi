@@ -123,10 +123,14 @@ RUN go build -trimpath \
 # ========================================
 FROM alpine:3.23.3
 
+# DOCKER_GID must match the GID of the docker socket on the host (or Kubernetes node).
+# Override at build time with: --build-arg DOCKER_GID=<gid>
+ARG DOCKER_GID=998
+
 # Establish non-privileged execution context with docker socket access
-RUN addgroup -g 998 docker && \
+RUN addgroup -g ${DOCKER_GID} docker && \
     addgroup -S pentagi && \
-    adduser -S pentagi -G pentagi && \
+    adduser -S -u 1000 -h /opt/pentagi -G pentagi pentagi && \
     addgroup pentagi docker
 
 # Install required packages
@@ -137,15 +141,16 @@ ADD scripts/entrypoint.sh /opt/pentagi/bin/
 RUN sed -i 's/\r//' /opt/pentagi/bin/entrypoint.sh && \
     chmod +x /opt/pentagi/bin/entrypoint.sh
 
+ENV HOME=/opt/pentagi
+
 RUN mkdir -p \
-    /root/.ollama \
     /opt/pentagi/bin \
     /opt/pentagi/ssl \
     /opt/pentagi/fe \
     /opt/pentagi/logs \
     /opt/pentagi/data \
-    /opt/pentagi/conf && \
-    chmod 777 /root/.ollama
+    /opt/pentagi/conf \
+    /opt/pentagi/.ollama
 
 COPY --from=api-builder /pentagi /opt/pentagi/bin/pentagi
 COPY --from=api-builder /ctester /opt/pentagi/bin/ctester
@@ -179,6 +184,9 @@ COPY EULA.md /opt/pentagi/fe/EULA.md
 RUN chown -R pentagi:pentagi /opt/pentagi
 
 WORKDIR /opt/pentagi
+
+# HTTP port (SERVER_PORT env var, default 8080); use 8443 when SERVER_USE_SSL=true
+EXPOSE 8080
 
 USER pentagi
 
