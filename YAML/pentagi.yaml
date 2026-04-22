@@ -13,10 +13,18 @@ spec:
       labels:
         app: pentagi
     spec:
-      # GID 999 is the typical 'docker' group on Debian/Ubuntu nodes.
-      # Run: stat -c '%g' /var/run/docker.sock on the node to confirm.
-      securityContext:
-        supplementalGroups: [999]
+      initContainers:
+      # Opens the Docker socket so uid 1000 can reach it regardless of the
+      # node's docker group GID. Runs once at pod startup then exits.
+      - name: fix-docker-perms
+        image: busybox
+        securityContext:
+          runAsUser: 0
+        command: ["chmod", "666", "/var/run/docker.sock"]
+        volumeMounts:
+        - name: host-docker-socket
+          mountPath: /var/run/docker.sock
+
       containers:
       # --- The Main App ---
       - name: pentagi
@@ -24,6 +32,7 @@ spec:
         securityContext:
           runAsUser: 1000
           runAsGroup: 1000
+          allowPrivilegeEscalation: false
         ports:
         - containerPort: 8443
         env:
