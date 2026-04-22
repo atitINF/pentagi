@@ -252,11 +252,14 @@ class MessageLog:
 
     @classmethod
     def from_dict(cls, d: dict) -> "MessageLog":
+        raw_flow = d.get("flow_id") or d.get("flowId")
+        raw_task = d.get("task_id") or d.get("taskId")
+        raw_sub  = d.get("subtask_id") or d.get("subtaskId")
         return cls(
             id=int(d["id"]) if d.get("id") is not None else None,
-            flow_id=int(d["flow_id"]) if d.get("flow_id") is not None else None,
-            task_id=int(d["task_id"]) if d.get("task_id") is not None else None,
-            subtask_id=int(d["subtask_id"]) if d.get("subtask_id") is not None else None,
+            flow_id=int(raw_flow) if raw_flow is not None else None,
+            task_id=int(raw_task) if raw_task is not None else None,
+            subtask_id=int(raw_sub) if raw_sub is not None else None,
             type=_message_type(d.get("type", "answer")),
             message=d.get("message", ""),
             result=d.get("result") or None,
