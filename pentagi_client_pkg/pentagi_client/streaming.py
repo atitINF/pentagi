@@ -176,11 +176,6 @@ class StreamingManager:
                     log = MessageLog.from_dict(data)
                     self._dbg(f"message: type={log.type.value}")
                     self._queue.put(log)
-                    # Only stop on flow-level done (subtask_id is None).
-                    # Subtask completions also emit done but should not end the stream.
-                    if log.type == MessageType.done and log.subtask_id is None:
-                        self._stop_event.set()
-                        ws.close()
 
             elif msg_type == "error":
                 self._dbg(f"server error frame: {msg}")
