@@ -13,6 +13,10 @@ spec:
       labels:
         app: pentagi
     spec:
+      # GID 999 is the typical 'docker' group on Debian/Ubuntu nodes.
+      # Run: stat -c '%g' /var/run/docker.sock on the node to confirm.
+      securityContext:
+        supplementalGroups: [999]
       containers:
       # --- The Main App ---
       - name: pentagi
@@ -33,33 +37,29 @@ spec:
           value: "8443"
         - name: GRAPHITI_ENABLED
           value: "true"
+        # Use host Docker socket instead of DinD sidecar.
+        # Requires the node's docker group GID to be set in supplementalGroups below,
+        # and the host socket mounted via host-docker-socket volume.
         - name: DOCKER_HOST
-          value: "tcp://localhost:2375"
+          value: "unix:///var/run/docker.sock"
         envFrom:
         - secretRef:
             name: pentagi-secrets
         volumeMounts:
         - name: shared-data
           mountPath: /opt/pentagi/data
-
-      # --- The Docker-in-Docker Sidecar ---
-      - name: dind
-        image: docker:dind
-        securityContext:
-          privileged: true
-          runAsUser: 0
-        env:
-        - name: DOCKER_TLS_CERTDIR
-          value: ""
-        ports:
-        - containerPort: 2375
-        volumeMounts:
-        - name: shared-data
-          mountPath: /opt/pentagi/data
+        - name: host-docker-socket
+          mountPath: /var/run/docker.sock
 
       volumes:
       - name: shared-data
         emptyDir: {}
+      # Mount the host node's Docker socket. The node must be running Docker
+      # (not containerd-only). On containerd-only nodes use the DinD approach instead.
+      - name: host-docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
 
 ---
 apiVersion: v1
