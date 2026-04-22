@@ -8,8 +8,8 @@ import requests as _requests
 from .config import Config
 from .exceptions import APIError, AuthError
 from .exceptions import ConnectionError as PentAGIConnectionError
-from .models import Flow, MessageLog, Subtask, Task
-from .streaming import StreamingManager
+from .models import Assistant, AssistantLog, Flow, MessageLog, Subtask, Task
+from .streaming import AssistantStreamingManager, StreamingManager
 
 
 class PentAGIClient:
@@ -151,15 +151,65 @@ class PentAGIClient:
         return Subtask.from_dict(data)
 
     # ------------------------------------------------------------------
+    # Assistant (conversational chat about a flow)
+    # ------------------------------------------------------------------
+
+    def create_assistant(
+        self,
+        flow_id: int,
+        input: str,
+        provider: str,
+        use_agents: bool = True,
+    ) -> Assistant:
+        data = self._post(f"/flows/{flow_id}/assistants/", {
+            "input": input,
+            "provider": provider,
+            "use_agents": use_agents,
+        })
+        return Assistant.from_dict(data)
+
+    def reply_to_assistant(self, flow_id: int, assistant_id: int, input: str) -> None:
+        self._put(f"/flows/{flow_id}/assistants/{assistant_id}", {
+            "action": "input",
+            "input": input,
+        })
+
+    def stop_assistant(self, flow_id: int, assistant_id: int) -> None:
+        try:
+            self._put(f"/flows/{flow_id}/assistants/{assistant_id}", {"action": "stop"})
+        except APIError as exc:
+            if exc.status_code < 500:
+                return
+            raise
+
+    def assistant_messages(
+        self,
+        flow_id: int,
+        assistant_id: int,
+    ) -> Iterator[AssistantLog]:
+        manager = AssistantStreamingManager(self._cfg, flow_id, assistant_id)
+        try:
+            for msg in manager:
+                yield msg
+        finally:
+            manager.close()
+
+    # ------------------------------------------------------------------
     # Streaming
     # ------------------------------------------------------------------
+
+    def get_messages(self, flow_id: int) -> List[MessageLog]:
+        data = self._get(f"/flows/{flow_id}/msglogs/", page=1, type="init", pageSize=-1)
+        items = data.get("msglogs") or (data if isinstance(data, list) else [])
+        return [MessageLog.from_dict(m) for m in items]
 
     def messages(
         self,
         flow_id: int,
         types: Optional[List[str]] = None,
+        debug: bool = False,
     ) -> Iterator[MessageLog]:
-        manager = StreamingManager(self._cfg, flow_id)
+        manager = StreamingManager(self._cfg, flow_id, debug=debug)
         type_filter = set(types) if types else None
         try:
             for msg in manager:

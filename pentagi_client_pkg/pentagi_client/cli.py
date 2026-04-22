@@ -90,8 +90,10 @@ def start(ctx, input: str, provider: str, prompt_types, prompt_texts, no_restore
               help="Show all message types (thoughts, terminal, search, …)")
 @click.option("--types", default=None,
               help="Comma-separated explicit type filter (overrides default + verbose)")
+@click.option("--debug", is_flag=True, default=False,
+              help="Print raw WebSocket events to stderr for troubleshooting")
 @click.pass_context
-def messages(ctx, flow_id: int, verbose: bool, types: Optional[str]):
+def messages(ctx, flow_id: int, verbose: bool, types: Optional[str], debug: bool):
     """Stream live messages from a running flow (Ctrl-C to stop)."""
     if types:
         allowed = set(t.strip() for t in types.split(","))
@@ -102,7 +104,10 @@ def messages(ctx, flow_id: int, verbose: bool, types: Optional[str]):
 
     try:
         client = _client(ctx.obj["env"])
-        for msg in client.messages(flow_id, types=list(allowed)):
+        for msg in client.messages(flow_id, types=list(allowed), debug=debug):
+            if msg.type == MessageType.reconnect:
+                click.echo(f"[reconnecting…]", err=True)
+                continue
             ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
             lines = msg.message.splitlines() or [""]
             click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}")
@@ -113,6 +118,52 @@ def messages(ctx, flow_id: int, verbose: bool, types: Optional[str]):
     except PentAGIError as exc:
         _err(str(exc))
         sys.exit(1)
+
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--verbose", is_flag=True, default=False,
+              help="Show all message types including thoughts, terminal output, searches")
+@click.option("--types", default=None,
+              help="Comma-separated explicit type filter")
+@click.option("--tail", default=0, type=int,
+              help="Show only the last N messages (0 = all)")
+@click.pass_context
+def logs(ctx, flow_id: int, verbose: bool, types: Optional[str], tail: int):
+    """Fetch historical messages for a flow from the REST API.
+
+    Unlike 'messages', this works on finished flows and shows everything
+    that already happened. Great for debugging or reviewing results.
+    """
+    if types:
+        allowed = set(t.strip() for t in types.split(","))
+    elif verbose:
+        allowed = {t.value for t in (_DEFAULT_TYPES | _VERBOSE_EXTRA)}
+    else:
+        allowed = {t.value for t in _DEFAULT_TYPES}
+
+    try:
+        client = _client(ctx.obj["env"])
+        all_msgs = client.get_messages(flow_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    filtered = [m for m in all_msgs if m.type.value in allowed]
+
+    if tail > 0:
+        filtered = filtered[-tail:]
+
+    if not filtered:
+        click.echo("No messages found.")
+        return
+
+    for msg in filtered:
+        ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+        lines = msg.message.splitlines() or [""]
+        click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}")
+        for line in lines[1:]:
+            click.echo(f"  {line}")
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +267,93 @@ def reply(ctx, flow_id: int, input: str):
 # ---------------------------------------------------------------------------
 # stop
 # ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.argument("message")
+@click.option("--provider", default="openai", show_default=True,
+              help="LLM provider for the assistant")
+@click.option("--no-agents", is_flag=True, default=False,
+              help="Disable multi-agent mode (assistant only)")
+@click.pass_context
+def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool):
+    """Start an interactive chat with an AI assistant about a running flow.
+
+    The assistant has full context of the flow's tasks, findings, and logs.
+    Type your message as an argument to start, then keep chatting interactively.
+    Press Ctrl-C or type 'exit' / 'quit' to end the session.
+
+    Example:
+
+        pentagi chat 42 "What vulnerabilities have been found so far?"
+    """
+    try:
+        client = _client(ctx.obj["env"])
+        assistant = client.create_assistant(
+            flow_id=flow_id,
+            input=message,
+            provider=provider,
+            use_agents=not no_agents,
+        )
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    click.echo(f"Assistant {assistant.id} started. Ctrl-C or type 'exit' to quit.\n")
+
+    _DEFAULT_ASSISTANT_TYPES = {
+        MessageType.answer, MessageType.report, MessageType.ask,
+        MessageType.advice, MessageType.done,
+    }
+
+    def _stream_until_done():
+        """Print assistant messages until a 'done' arrives or stream ends."""
+        try:
+            for msg in client.assistant_messages(flow_id, assistant.id):
+                if msg.type == MessageType.reconnect:
+                    click.echo(f"\n[reconnecting…]", err=True)
+                    continue
+                if msg.type not in _DEFAULT_ASSISTANT_TYPES:
+                    continue
+                if msg.type == MessageType.done:
+                    break
+                # append_part=True means streaming token; same line
+                if msg.append_part:
+                    click.echo(msg.message, nl=False)
+                else:
+                    click.echo(f"\nAssistant: {msg.message}")
+        except PentAGIError as exc:
+            _err(str(exc))
+
+    # Stream the response to the opening message
+    _stream_until_done()
+
+    # Interactive loop
+    while True:
+        try:
+            click.echo("")
+            user_input = click.prompt("You", prompt_suffix="> ")
+        except (click.Abort, EOFError, KeyboardInterrupt):
+            break
+
+        if user_input.strip().lower() in ("exit", "quit", "q"):
+            break
+
+        try:
+            client.reply_to_assistant(flow_id, assistant.id, user_input)
+        except PentAGIError as exc:
+            _err(str(exc))
+            break
+
+        _stream_until_done()
+
+    try:
+        client.stop_assistant(flow_id, assistant.id)
+    except PentAGIError:
+        pass
+
+    click.echo("\nChat session ended.")
+
 
 @cli.command()
 @click.argument("flow_id", type=int)

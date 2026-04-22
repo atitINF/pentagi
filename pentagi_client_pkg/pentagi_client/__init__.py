@@ -9,6 +9,8 @@ from .exceptions import (
 )
 from .exceptions import ConnectionError as PentAGIConnectionError
 from .models import (
+    Assistant,
+    AssistantLog,
     Flow,
     FlowStatus,
     MessageLog,
@@ -21,6 +23,8 @@ from .models import (
 __all__ = [
     "PentAGIClient",
     "Config",
+    "Assistant",
+    "AssistantLog",
     "PentAGIError",
     "ConfigError",
     "AuthError",

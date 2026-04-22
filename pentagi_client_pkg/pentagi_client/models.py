@@ -170,6 +170,74 @@ class Task:
 
 
 @dataclass
+class Assistant:
+    id: int
+    flow_id: int
+    title: str
+    status: FlowStatus
+    provider: str
+    use_agents: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Assistant":
+        provider = ""
+        if isinstance(d.get("provider"), dict):
+            provider = d["provider"].get("type", "")
+        elif isinstance(d.get("model_provider_type"), str):
+            provider = d["model_provider_type"]
+        return cls(
+            id=int(d["id"]),
+            flow_id=int(d["flow_id"]),
+            title=d.get("title", ""),
+            status=_flow_status(d.get("status", "created")),
+            provider=provider,
+            use_agents=bool(d.get("use_agents", False)),
+            created_at=_require_dt(d.get("created_at"), "created_at"),
+            updated_at=_require_dt(d.get("updated_at"), "updated_at"),
+        )
+
+
+@dataclass
+class AssistantLog:
+    id: Optional[int]
+    flow_id: Optional[int]
+    assistant_id: Optional[int]
+    type: MessageType
+    message: str
+    result: Optional[str]
+    thinking: Optional[str]
+    result_format: ResultFormat
+    append_part: bool
+    created_at: Optional[datetime]
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AssistantLog":
+        return cls(
+            id=int(d["id"]) if d.get("id") is not None else None,
+            flow_id=int(d["flowId"]) if d.get("flowId") is not None else None,
+            assistant_id=int(d["assistantId"]) if d.get("assistantId") is not None else None,
+            type=_message_type(d.get("type", "answer")),
+            message=d.get("message", ""),
+            result=d.get("result") or None,
+            thinking=d.get("thinking") or None,
+            result_format=_result_format(d.get("resultFormat") or d.get("result_format", "plain")),
+            append_part=bool(d.get("appendPart", False)),
+            created_at=_parse_dt(d.get("createdAt") or d.get("created_at")),
+        )
+
+    @classmethod
+    def synthetic(cls, msg_type: MessageType, message: str) -> "AssistantLog":
+        return cls(
+            id=None, flow_id=None, assistant_id=None,
+            type=msg_type, message=message, result=None, thinking=None,
+            result_format=ResultFormat.plain, append_part=False,
+            created_at=datetime.now(tz=timezone.utc),
+        )
+
+
+@dataclass
 class MessageLog:
     id: Optional[int]
     flow_id: Optional[int]
