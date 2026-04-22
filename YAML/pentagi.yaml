@@ -31,25 +31,13 @@ spec:
           value: "true"
         - name: SERVER_PORT
           value: "8443"
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: pentagi-secrets
-              key: DATABASE_URL
         - name: GRAPHITI_ENABLED
           value: "true"
-        - name: GRAPHITI_URL
-          valueFrom:
-            secretKeyRef:
-              name: pentagi-secrets
-              key: GRAPHITI_URL
         - name: DOCKER_HOST
           value: "tcp://localhost:2375"
-        - name: OPEN_AI_KEY
-          valueFrom:
-            secretKeyRef:
-              name: pentagi-secrets
-              key: OPEN_AI_KEY
+        envFrom:
+        - secretRef:
+            name: pentagi-secrets
         volumeMounts:
         - name: shared-data
           mountPath: /opt/pentagi/data
