@@ -94,7 +94,11 @@ def start(ctx, input: str, provider: str, prompt_types, prompt_texts, no_restore
               help="Print raw WebSocket events to stderr for troubleshooting")
 @click.pass_context
 def messages(ctx, flow_id: int, verbose: bool, types: Optional[str], debug: bool):
-    """Stream live messages from a running flow (Ctrl-C to stop)."""
+    """Stream live messages from a running flow (Ctrl-C to stop).
+
+    If the flow is already finished or failed, falls back to showing
+    historical logs (same as the 'logs' command).
+    """
     if types:
         allowed = set(t.strip() for t in types.split(","))
     elif verbose:
@@ -104,6 +108,23 @@ def messages(ctx, flow_id: int, verbose: bool, types: Optional[str], debug: bool
 
     try:
         client = _client(ctx.obj["env"])
+
+        flow = client.get_flow(flow_id)
+        if flow.status.value in ("finished", "failed"):
+            click.echo(f"Flow {flow_id} is {flow.status.value} — showing historical logs.", err=True)
+            all_msgs = client.get_messages(flow_id)
+            filtered = [m for m in all_msgs if m.type.value in allowed]
+            if not filtered:
+                click.echo("No messages found.")
+                return
+            for msg in filtered:
+                ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+                lines = msg.message.splitlines() or [""]
+                click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}")
+                for line in lines[1:]:
+                    click.echo(f"  {line}")
+            return
+
         for msg in client.messages(flow_id, types=list(allowed), debug=debug):
             if msg.type == MessageType.reconnect:
                 click.echo(f"[reconnecting…]", err=True)
