@@ -186,8 +186,9 @@ class PentAGIClient:
         self,
         flow_id: int,
         assistant_id: int,
+        debug: bool = False,
     ) -> Iterator[AssistantLog]:
-        manager = AssistantStreamingManager(self._cfg, flow_id, assistant_id)
+        manager = AssistantStreamingManager(self._cfg, flow_id, assistant_id, debug=debug)
         try:
             for msg in manager:
                 yield msg

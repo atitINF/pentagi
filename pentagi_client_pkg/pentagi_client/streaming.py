@@ -243,7 +243,8 @@ class AssistantStreamingManager:
     resume() is called, allowing the caller to send a new input first.
     """
 
-    def __init__(self, config: Config, flow_id: int, assistant_id: int) -> None:
+    def __init__(self, config: Config, flow_id: int, assistant_id: int, debug: bool = False) -> None:
+        self._debug = debug
         self._cfg = config
         self._flow_id = flow_id
         self._assistant_id = assistant_id
@@ -252,6 +253,7 @@ class AssistantStreamingManager:
         self._retry_count = 0
         self._msg_id = "1"
         self._ws: Optional[websocket.WebSocketApp] = None
+        self._last_error: Optional[str] = None
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -261,6 +263,8 @@ class AssistantStreamingManager:
     def __next__(self) -> AssistantLog:
         item = self._queue.get()
         if item is _SENTINEL:
+            if self._last_error:
+                raise StreamError(self._last_error)
             raise StopIteration
         if isinstance(item, StreamError):
             raise item
@@ -275,23 +279,30 @@ class AssistantStreamingManager:
                 pass
         self._queue.put(_SENTINEL)
 
+    def _dbg(self, msg: str) -> None:
+        if self._debug:
+            print(f"[WS-assistant] {msg}", file=sys.stderr, flush=True)
+
     def _run(self) -> None:
         while not self._stop_event.is_set():
             try:
                 self._connect_and_run()
             except StopIteration:
                 return
-            except Exception:
-                pass
+            except Exception as exc:
+                self._last_error = str(exc)
+                self._dbg(f"exception in _connect_and_run: {exc}")
 
             if self._stop_event.is_set():
                 break
 
             self._retry_count += 1
             if self._retry_count > self._cfg.ws_max_retries:
-                self._queue.put(StreamError(
+                err = StreamError(
+                    self._last_error or
                     f"Assistant stream failed after {self._cfg.ws_max_retries} retries"
-                ))
+                )
+                self._queue.put(err)
                 self._queue.put(_SENTINEL)
                 return
 
@@ -310,6 +321,7 @@ class AssistantStreamingManager:
 
     def _connect_and_run(self) -> None:
         def on_open(ws):
+            self._dbg(f"connected to {self._cfg.ws_url}")
             ws.send(json.dumps({
                 "type": "connection_init",
                 "payload": {"Authorization": f"Bearer {self._cfg.api_token}"},
@@ -325,8 +337,10 @@ class AssistantStreamingManager:
                 return
 
             msg_type = msg.get("type", "")
+            self._dbg(f"← {msg_type}")
 
             if msg_type == "connection_ack":
+                self._dbg("subscribed to assistantLogAdded")
                 ws.send(json.dumps({
                     "type": "start",
                     "id": self._msg_id,
@@ -341,25 +355,34 @@ class AssistantStreamingManager:
 
             elif msg_type == "data":
                 payload = msg.get("payload", {})
-                if payload.get("errors"):
+                errors = payload.get("errors")
+                if errors:
+                    self._dbg(f"server errors: {errors}")
                     return
                 data = (payload.get("data") or {}).get("assistantLogAdded")
                 if data:
-                    # filter to this assistant only
                     aid = data.get("assistantId")
                     if aid is not None and int(aid) != self._assistant_id:
+                        self._dbg(f"skipping msg for assistant {aid} (want {self._assistant_id})")
                         return
                     log = AssistantLog.from_dict(data)
+                    self._dbg(f"message: type={log.type.value}")
                     self._queue.put(log)
 
-            elif msg_type in ("error", "complete"):
+            elif msg_type == "error":
+                self._dbg(f"server error frame: {msg}")
+                ws.close()
+
+            elif msg_type == "complete":
+                self._stop_event.set()
                 ws.close()
 
         def on_error(ws, error):
-            pass
+            self._last_error = str(error)
+            self._dbg(f"on_error: {error}")
 
-        def on_close(ws, *_):
-            pass
+        def on_close(ws, close_status_code, close_msg):
+            self._dbg(f"on_close: code={close_status_code} msg={close_msg}")
 
         self._ws = websocket.WebSocketApp(
             self._cfg.ws_url,

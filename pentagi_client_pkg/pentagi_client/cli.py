@@ -275,8 +275,10 @@ def reply(ctx, flow_id: int, input: str):
               help="LLM provider for the assistant")
 @click.option("--no-agents", is_flag=True, default=False,
               help="Disable multi-agent mode (assistant only)")
+@click.option("--debug", is_flag=True, default=False,
+              help="Print raw WebSocket events to stderr for troubleshooting")
 @click.pass_context
-def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool):
+def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, debug: bool):
     """Start an interactive chat with an AI assistant about a running flow.
 
     The assistant has full context of the flow's tasks, findings, and logs.
@@ -309,7 +311,7 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool):
     def _stream_until_done():
         """Print assistant messages until a 'done' arrives or stream ends."""
         try:
-            for msg in client.assistant_messages(flow_id, assistant.id):
+            for msg in client.assistant_messages(flow_id, assistant.id, debug=debug):
                 if msg.type == MessageType.reconnect:
                     click.echo(f"\n[reconnecting…]", err=True)
                     continue
