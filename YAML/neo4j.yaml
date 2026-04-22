@@ -18,6 +18,8 @@ spec:
       - name: neo4j
         image: neo4j:5-community
         env:
+        - name: NEO4J_server_config_strict__validation_enabled
+          value: "false"
         - name: NEO4J_AUTH
           valueFrom:
             secretKeyRef:
