@@ -246,6 +246,32 @@ def subtask(ctx, flow_id: int, task_id: int, subtask_id: int):
 
 
 # ---------------------------------------------------------------------------
+# allsubtasks
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.pass_context
+def allsubtasks(ctx, flow_id: int):
+    """List every subtask across all tasks for a flow."""
+    try:
+        client = _client(ctx.obj["env"])
+        sub_list = client.get_all_subtasks(flow_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not sub_list:
+        click.echo("No subtasks found.")
+        return
+
+    click.echo(f"{'TASK':<6} {'ID':<6} {'STATUS':<12} TITLE")
+    click.echo(f"{'----':<6} {'--':<6} {'--------':<12} {'-----'}")
+    for s in sub_list:
+        click.echo(f"{s.task_id:<6} {s.id:<6} {s.status.value:<12} {s.title}")
+
+
+# ---------------------------------------------------------------------------
 # reply
 # ---------------------------------------------------------------------------
 
