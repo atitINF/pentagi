@@ -1,0 +1,169 @@
+from __future__ import annotations
+
+import threading
+from typing import Dict, Iterator, List, Optional
+
+import requests as _requests
+
+from .config import Config
+from .exceptions import APIError, AuthError
+from .exceptions import ConnectionError as PentAGIConnectionError
+from .models import Flow, MessageLog, Subtask, Task
+from .streaming import StreamingManager
+
+
+class PentAGIClient:
+    def __init__(self, config: Optional[Config] = None) -> None:
+        self._cfg = config or Config.from_env()
+        self._session = _requests.Session()
+        self._session.headers.update({
+            "Authorization": f"Bearer {self._cfg.api_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        })
+        self._session.verify = self._cfg.requests_verify
+
+    # ------------------------------------------------------------------
+    # HTTP helpers
+    # ------------------------------------------------------------------
+
+    def _get(self, path: str, **params) -> dict:
+        url = self._cfg.rest_base + path
+        try:
+            resp = self._session.get(url, params=params, timeout=30)
+        except _requests.ConnectionError as exc:
+            raise PentAGIConnectionError(str(exc)) from exc
+        except _requests.Timeout as exc:
+            raise PentAGIConnectionError("Request timed out") from exc
+        return self._handle(resp)
+
+    def _post(self, path: str, json: dict) -> dict:
+        url = self._cfg.rest_base + path
+        try:
+            resp = self._session.post(url, json=json, timeout=30)
+        except _requests.ConnectionError as exc:
+            raise PentAGIConnectionError(str(exc)) from exc
+        except _requests.Timeout as exc:
+            raise PentAGIConnectionError("Request timed out") from exc
+        return self._handle(resp)
+
+    def _put(self, path: str, json: dict) -> dict:
+        url = self._cfg.rest_base + path
+        try:
+            resp = self._session.put(url, json=json, timeout=30)
+        except _requests.ConnectionError as exc:
+            raise PentAGIConnectionError(str(exc)) from exc
+        except _requests.Timeout as exc:
+            raise PentAGIConnectionError("Request timed out") from exc
+        return self._handle(resp)
+
+    @staticmethod
+    def _handle(resp: _requests.Response) -> dict:
+        if resp.status_code in (401, 403):
+            raise AuthError(f"HTTP {resp.status_code}: authentication failed")
+        if not resp.ok:
+            raise APIError(resp.status_code, resp.text)
+        if resp.status_code == 204 or not resp.content:
+            return {}
+        try:
+            body = resp.json()
+        except Exception:
+            return {}
+        if isinstance(body, dict) and "data" in body:
+            return body["data"]
+        return body
+
+    # ------------------------------------------------------------------
+    # Flow operations
+    # ------------------------------------------------------------------
+
+    def start_flow(
+        self,
+        input: str,
+        provider: str,
+        prompt_overrides: Optional[Dict[str, str]] = None,
+        restore_prompts: bool = True,
+    ) -> Flow:
+        originals: Dict[str, str] = {}
+
+        if prompt_overrides:
+            for prompt_type, new_text in prompt_overrides.items():
+                try:
+                    original = self._get(f"/prompts/{prompt_type}")
+                    originals[prompt_type] = original.get("prompt", "")
+                except Exception:
+                    originals[prompt_type] = ""
+                self._put(f"/prompts/{prompt_type}", {"prompt": new_text})
+
+        data = self._post("/flows/", {"input": input, "provider": provider})
+        flow = Flow.from_dict(data)
+
+        if prompt_overrides and restore_prompts:
+            def _restore():
+                for pt in originals:
+                    try:
+                        self._post(f"/prompts/{pt}/default", {})
+                    except Exception:
+                        pass
+            threading.Thread(target=_restore, daemon=True).start()
+
+        return flow
+
+    def get_flow(self, flow_id: int) -> Flow:
+        data = self._get(f"/flows/{flow_id}")
+        return Flow.from_dict(data)
+
+    def list_flows(self) -> List[Flow]:
+        data = self._get("/flows/", page=1, type="init", pageSize=-1)
+        items = data.get("flows") or (data if isinstance(data, list) else [])
+        return [Flow.from_dict(f) for f in items]
+
+    def reply_to_flow(self, flow_id: int, input: str) -> None:
+        self._put(f"/flows/{flow_id}", {"action": "input", "input": input})
+
+    def stop_flow(self, flow_id: int) -> None:
+        try:
+            self._put(f"/flows/{flow_id}", {"action": "stop"})
+        except APIError as exc:
+            if exc.status_code < 500:
+                return
+            raise
+
+    # ------------------------------------------------------------------
+    # Task / Subtask operations
+    # ------------------------------------------------------------------
+
+    def get_tasks(self, flow_id: int) -> List[Task]:
+        data = self._get(f"/flows/{flow_id}/tasks/", page=1, type="init", pageSize=-1)
+        items = data.get("tasks") or (data if isinstance(data, list) else [])
+        return [Task.from_dict(t) for t in items]
+
+    def get_subtasks(self, flow_id: int, task_id: int) -> List[Subtask]:
+        data = self._get(
+            f"/flows/{flow_id}/tasks/{task_id}/subtasks/",
+            page=1, type="init", pageSize=-1,
+        )
+        items = data.get("subtasks") or (data if isinstance(data, list) else [])
+        return [Subtask.from_dict(s) for s in items]
+
+    def get_subtask(self, flow_id: int, task_id: int, subtask_id: int) -> Subtask:
+        data = self._get(f"/flows/{flow_id}/tasks/{task_id}/subtasks/{subtask_id}")
+        return Subtask.from_dict(data)
+
+    # ------------------------------------------------------------------
+    # Streaming
+    # ------------------------------------------------------------------
+
+    def messages(
+        self,
+        flow_id: int,
+        types: Optional[List[str]] = None,
+    ) -> Iterator[MessageLog]:
+        manager = StreamingManager(self._cfg, flow_id)
+        type_filter = set(types) if types else None
+        try:
+            for msg in manager:
+                if type_filter is None or msg.type.value in type_filter:
+                    yield msg
+        finally:
+            manager.close()

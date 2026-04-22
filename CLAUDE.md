@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+<!-- SPECKIT START -->
+## Active Feature
+
+**Feature**: PentAGI Python Client (`001-pentagi-python-client`)  
+**Plan**: [specs/001-pentagi-python-client/plan.md](specs/001-pentagi-python-client/plan.md)  
+**Spec**: [specs/001-pentagi-python-client/spec.md](specs/001-pentagi-python-client/spec.md)  
+**Output directory**: `pentagi_client_pkg/`
+<!-- SPECKIT END -->
+
 ## Core Interaction Rules
 
 1. **Always use English** for all interactions, responses, explanations, and questions with users.
