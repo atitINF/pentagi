@@ -151,12 +151,10 @@ class PentAGIClient:
         return Subtask.from_dict(data)
 
     def get_all_subtasks(self, flow_id: int) -> List[Subtask]:
-        """Return all subtasks across every task in the flow."""
-        tasks = self.get_tasks(flow_id)
-        result: List[Subtask] = []
-        for task in tasks:
-            result.extend(self.get_subtasks(flow_id, task.id))
-        return result
+        """Return all subtasks across every task in the flow (single API call)."""
+        data = self._get(f"/flows/{flow_id}/subtasks/", page=1, type="init", pageSize=-1)
+        items = data.get("subtasks") or (data if isinstance(data, list) else [])
+        return [Subtask.from_dict(s) for s in items]
 
     # ------------------------------------------------------------------
     # Assistant (conversational chat about a flow)

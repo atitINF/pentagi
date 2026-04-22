@@ -265,10 +265,14 @@ def allsubtasks(ctx, flow_id: int):
         click.echo("No subtasks found.")
         return
 
-    click.echo(f"{'TASK':<6} {'ID':<6} {'STATUS':<12} TITLE")
-    click.echo(f"{'----':<6} {'--':<6} {'--------':<12} {'-----'}")
     for s in sub_list:
-        click.echo(f"{s.task_id:<6} {s.id:<6} {s.status.value:<12} {s.title}")
+        click.echo(f"--- Task {s.task_id} / Subtask {s.id} ---")
+        click.echo(f"  Title:       {s.title}")
+        click.echo(f"  Status:      {s.status.value}")
+        click.echo(f"  Description: {s.description}")
+        click.echo(f"  Result:      {s.result or '—'}")
+        click.echo(f"  Context:     {s.context or '—'}")
+        click.echo("")
 
 
 # ---------------------------------------------------------------------------
