@@ -275,10 +275,12 @@ def reply(ctx, flow_id: int, input: str):
               help="LLM provider for the assistant")
 @click.option("--no-agents", is_flag=True, default=False,
               help="Disable multi-agent mode (assistant only)")
+@click.option("--verbose", is_flag=True, default=False,
+              help="Show all message types including thoughts, searches, and tool output")
 @click.option("--debug", is_flag=True, default=False,
               help="Print raw WebSocket events to stderr for troubleshooting")
 @click.pass_context
-def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, debug: bool):
+def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbose: bool, debug: bool):
     """Start an interactive chat with an AI assistant about a running flow.
 
     The assistant has full context of the flow's tasks, findings, and logs.
@@ -307,6 +309,9 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, debug:
         MessageType.answer, MessageType.report, MessageType.ask,
         MessageType.advice, MessageType.done,
     }
+    _VERBOSE_ASSISTANT_TYPES = _DEFAULT_ASSISTANT_TYPES | _VERBOSE_EXTRA
+
+    allowed_types = _VERBOSE_ASSISTANT_TYPES if verbose else _DEFAULT_ASSISTANT_TYPES
 
     def _stream_until_done():
         """Print assistant messages until a 'done' arrives or stream ends."""
@@ -315,15 +320,23 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, debug:
                 if msg.type == MessageType.reconnect:
                     click.echo(f"\n[reconnecting…]", err=True)
                     continue
-                if msg.type not in _DEFAULT_ASSISTANT_TYPES:
+                if msg.type not in allowed_types:
                     continue
                 if msg.type == MessageType.done:
                     break
-                # append_part=True means streaming token; same line
-                if msg.append_part:
-                    click.echo(msg.message, nl=False)
+                ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+                if msg.type in _DEFAULT_ASSISTANT_TYPES:
+                    # Final answer — print cleanly
+                    if msg.append_part:
+                        click.echo(msg.message, nl=False)
+                    else:
+                        click.echo(f"\nAssistant: {msg.message}")
                 else:
-                    click.echo(f"\nAssistant: {msg.message}")
+                    # Verbose-only tool/thought messages
+                    lines = msg.message.splitlines() or [""]
+                    click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}", err=True)
+                    for line in lines[1:]:
+                        click.echo(f"  {line}", err=True)
         except PentAGIError as exc:
             _err(str(exc))
 
