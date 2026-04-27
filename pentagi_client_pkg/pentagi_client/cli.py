@@ -1261,3 +1261,144 @@ def stop(ctx, flow_id: int):
     except PentAGIError as exc:
         _err(str(exc))
         sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# dump  (export raw JSON samples for all endpoints to files)
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--out", "out_dir", default="./pentagi_samples", show_default=True,
+              help="Directory to write sample files into")
+@click.option("--no-global", is_flag=True, default=False,
+              help="Skip account-level endpoints (flows list, system usage, periods)")
+@click.option("--no-period", is_flag=True, default=False,
+              help="Skip the three usage-period files (week/month/quarter)")
+@click.pass_context
+def dump(ctx, flow_id: int, out_dir: str, no_global: bool, no_period: bool):
+    """Export raw JSON samples from every API endpoint to files.
+
+    Creates one JSON file per endpoint, named descriptively, so your team
+    can inspect the data shapes for integration work.
+
+    Example:
+
+        pentagi dump 42
+        pentagi dump 42 --out ./api-samples
+        pentagi dump 42 --no-period
+    """
+    import os as _os
+
+    _os.makedirs(out_dir, exist_ok=True)
+    client = _client(ctx.obj["env"])
+
+    saved: list = []
+    failed: list = []
+
+    def _save(filename: str, fetcher):
+        path = _os.path.join(out_dir, filename)
+        try:
+            data = fetcher()
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(data, fh, indent=2, default=str)
+            saved.append(filename)
+            click.echo(f"  ✓  {filename}")
+        except Exception as exc:
+            failed.append((filename, str(exc)))
+            click.echo(f"  ✗  {filename}  ({exc})", err=True)
+
+    fid = flow_id
+
+    # ------------------------------------------------------------------
+    # Account-level endpoints
+    # ------------------------------------------------------------------
+    if not no_global:
+        click.echo("\n[account-level]")
+        _save(
+            "flows.json",
+            lambda: client._get("/flows/", page=1, type="init", pageSize=-1),
+        )
+        _save(
+            "usage_system.json",
+            lambda: client._get("/usage/"),
+        )
+        if not no_period:
+            for period in ("week", "month", "quarter"):
+                _save(
+                    f"usage_period_{period}.json",
+                    lambda p=period: client._get(f"/usage/{p}"),
+                )
+
+    # ------------------------------------------------------------------
+    # Flow-scoped endpoints
+    # ------------------------------------------------------------------
+    click.echo(f"\n[flow {fid}]")
+    _save(
+        f"flow_{fid}.json",
+        lambda: client._get(f"/flows/{fid}"),
+    )
+    _save(
+        f"flow_{fid}_tasks.json",
+        lambda: client._get(f"/flows/{fid}/tasks/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_subtasks_all.json",
+        lambda: client._get(f"/flows/{fid}/subtasks/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_messages.json",
+        lambda: client._get(f"/flows/{fid}/msglogs/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_agentlogs.json",
+        lambda: client._get(f"/flows/{fid}/agentlogs/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_assistantlogs.json",
+        lambda: client._get(f"/flows/{fid}/assistantlogs/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_termlogs.json",
+        lambda: client._get(f"/flows/{fid}/termlogs/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_searchlogs.json",
+        lambda: client._get(f"/flows/{fid}/searchlogs/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_containers.json",
+        lambda: client._get(f"/flows/{fid}/containers/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_usage.json",
+        lambda: client._get(f"/flows/{fid}/usage/"),
+    )
+
+    # ------------------------------------------------------------------
+    # Manifest
+    # ------------------------------------------------------------------
+    import os as _os2
+    manifest = {
+        "flow_id": fid,
+        "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+        "saved": saved,
+        "failed": [{"file": f, "error": e} for f, e in failed],
+        "files": {
+            fname: _os2.path.join(out_dir, fname) for fname in saved
+        },
+    }
+    manifest_path = _os2.path.join(out_dir, "manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2, default=str)
+
+    click.echo(f"\n[manifest]")
+    click.echo(f"  ✓  manifest.json")
+
+    # ------------------------------------------------------------------
+    # Summary
+    # ------------------------------------------------------------------
+    click.echo(f"\n{'─'*50}")
+    click.echo(f"Saved {len(saved)} file(s) to: {_os.path.abspath(out_dir)}")
+    if failed:
+        click.echo(f"Failed: {len(failed)} endpoint(s) — see manifest.json for details.", err=True)
