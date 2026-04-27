@@ -8,7 +8,7 @@ import requests as _requests
 from .config import Config
 from .exceptions import APIError, AuthError
 from .exceptions import ConnectionError as PentAGIConnectionError
-from .models import AgentLog, Assistant, AssistantLog, Container, Flow, MessageLog, SearchLog, Subtask, Task, TermLog
+from .models import AgentLog, Assistant, AssistantLog, Container, Flow, MessageLog, Screenshot, SearchLog, Subtask, Task, TermLog, VecstoreLog
 from .streaming import AssistantStreamingManager, StreamingManager
 
 
@@ -173,6 +173,69 @@ class PentAGIClient:
         if subtask_id is not None:
             logs = [l for l in logs if l.subtask_id == subtask_id]
         return logs
+
+    # ------------------------------------------------------------------
+    # Vector store logs
+    # ------------------------------------------------------------------
+
+    def get_vecstore_logs(
+        self,
+        flow_id: int,
+        action: Optional[str] = None,
+        task_id: Optional[int] = None,
+        subtask_id: Optional[int] = None,
+    ) -> List[VecstoreLog]:
+        data = self._get(f"/flows/{flow_id}/vecstorelogs/", page=1, type="init", pageSize=-1)
+        items = data.get("vecstorelogs") or (data if isinstance(data, list) else [])
+        logs = [VecstoreLog.from_dict(i) for i in items]
+        if action:
+            logs = [l for l in logs if l.action == action]
+        if task_id is not None:
+            logs = [l for l in logs if l.task_id == task_id]
+        if subtask_id is not None:
+            logs = [l for l in logs if l.subtask_id == subtask_id]
+        return logs
+
+    # ------------------------------------------------------------------
+    # Screenshots
+    # ------------------------------------------------------------------
+
+    def get_screenshots(
+        self,
+        flow_id: int,
+        task_id: Optional[int] = None,
+        subtask_id: Optional[int] = None,
+    ) -> List[Screenshot]:
+        data = self._get(f"/flows/{flow_id}/screenshots/", page=1, type="init", pageSize=-1)
+        items = data.get("screenshots") or (data if isinstance(data, list) else [])
+        shots = [Screenshot.from_dict(i) for i in items]
+        if task_id is not None:
+            shots = [s for s in shots if s.task_id == task_id]
+        if subtask_id is not None:
+            shots = [s for s in shots if s.subtask_id == subtask_id]
+        return shots
+
+    def download_screenshot(self, flow_id: int, screenshot_id: int) -> bytes:
+        url = self._cfg.rest_base + f"/flows/{flow_id}/screenshots/{screenshot_id}/file"
+        try:
+            resp = self._session.get(url, timeout=60)
+        except _requests.ConnectionError as exc:
+            raise PentAGIConnectionError(str(exc)) from exc
+        except _requests.Timeout as exc:
+            raise PentAGIConnectionError("Request timed out") from exc
+        if resp.status_code in (401, 403):
+            raise AuthError(f"HTTP {resp.status_code}: authentication failed")
+        if not resp.ok:
+            raise APIError(resp.status_code, resp.text)
+        return resp.content
+
+    # ------------------------------------------------------------------
+    # Flow graph
+    # ------------------------------------------------------------------
+
+    def get_flow_graph(self, flow_id: int) -> dict:
+        """Return the full flow→tasks→subtasks hierarchy as a raw dict."""
+        return self._get(f"/flows/{flow_id}/graph")
 
     # ------------------------------------------------------------------
     # Search logs

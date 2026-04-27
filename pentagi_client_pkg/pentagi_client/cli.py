@@ -568,6 +568,218 @@ def searchlogs(ctx, flow_id: int, task_id: Optional[int], subtask_id: Optional[i
 
 
 # ---------------------------------------------------------------------------
+# vecstorelogs
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--action", default=None,
+              type=click.Choice(["retrieve", "store"], case_sensitive=False),
+              help="Filter to retrieve or store operations only")
+@click.option("--task-id", default=None, type=int, help="Filter to a specific task")
+@click.option("--subtask-id", default=None, type=int, help="Filter to a specific subtask")
+@click.option("--show-result/--no-result", default=False, show_default=True,
+              help="Include the retrieved/stored content")
+@click.option("--tail", default=0, type=int, help="Show only the last N entries (0 = all)")
+@click.pass_context
+def vecstorelogs(ctx, flow_id: int, action: Optional[str], task_id: Optional[int],
+                 subtask_id: Optional[int], show_result: bool, tail: int):
+    """Show vector store (RAG memory) operations performed during a flow.
+
+    Each entry is a retrieve or store action made by an agent against the
+    persistent vector memory. Use --action to focus on one direction.
+
+    Example:
+
+        pentagi vecstorelogs 42
+        pentagi vecstorelogs 42 --action retrieve --show-result
+        pentagi vecstorelogs 42 --subtask-id 5
+    """
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/vecstorelogs/", page=1, type="init", pageSize=-1))
+            return
+        entries = client.get_vecstore_logs(
+            flow_id, action=action, task_id=task_id, subtask_id=subtask_id,
+        )
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not entries:
+        click.echo("No vector store logs found.")
+        return
+
+    if tail > 0:
+        entries = entries[-tail:]
+
+    _ACTION_COLOR = {"retrieve": "cyan", "store": "yellow"}
+
+    for entry in entries:
+        ts = (entry.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+        scope = ""
+        if entry.task_id is not None:
+            scope = f" task={entry.task_id}"
+            if entry.subtask_id is not None:
+                scope += f"/sub={entry.subtask_id}"
+        action_label = click.style(entry.action, fg=_ACTION_COLOR.get(entry.action, "white"))
+        click.echo(
+            f"[{ts}]{scope} [{action_label}] {entry.initiator} → {entry.executor}"
+        )
+        click.echo(f"  Query:  {entry.query}")
+        if entry.filter and entry.filter not in ("{}", "null", ""):
+            click.echo(f"  Filter: {entry.filter}")
+        if show_result and entry.result:
+            result_lines = entry.result.splitlines()
+            click.echo(f"  Result: {result_lines[0]}")
+            for line in result_lines[1:]:
+                click.echo(f"          {line}")
+        click.echo("")
+
+
+# ---------------------------------------------------------------------------
+# screenshots
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--task-id", default=None, type=int, help="Filter to a specific task")
+@click.option("--subtask-id", default=None, type=int, help="Filter to a specific subtask")
+@click.option("--download", "dl_dir", default=None,
+              help="Download all screenshots into this directory")
+@click.pass_context
+def screenshots(ctx, flow_id: int, task_id: Optional[int], subtask_id: Optional[int],
+                dl_dir: Optional[str]):
+    """List browser screenshots taken during a flow, with optional download.
+
+    Example:
+
+        pentagi screenshots 42
+        pentagi screenshots 42 --download ./evidence
+        pentagi screenshots 42 --subtask-id 5 --download ./evidence
+    """
+    import os as _os
+
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/screenshots/", page=1, type="init", pageSize=-1))
+            return
+        shots = client.get_screenshots(flow_id, task_id=task_id, subtask_id=subtask_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not shots:
+        click.echo("No screenshots found.")
+        return
+
+    click.echo(f"{'ID':<6} {'CREATED':<20} {'TASK':<6} {'SUB':<6} NAME / URL")
+    click.echo(f"{'--':<6} {'-------':<20} {'----':<6} {'---':<6} ---------")
+    for s in shots:
+        ts = s.created_at.strftime("%Y-%m-%d %H:%M:%S") if s.created_at else ""
+        click.echo(
+            f"{s.id or '?':<6} {ts:<20} "
+            f"{str(s.task_id or ''):<6} {str(s.subtask_id or ''):<6} "
+            f"{s.name}  {s.url}"
+        )
+
+    if dl_dir:
+        _os.makedirs(dl_dir, exist_ok=True)
+        click.echo(f"\nDownloading {len(shots)} screenshot(s) to {_os.path.abspath(dl_dir)} …")
+        saved = 0
+        for s in shots:
+            if s.id is None:
+                continue
+            ext = ".png"
+            safe_name = (s.name or f"screenshot_{s.id}").replace("/", "_").replace(" ", "_")
+            if not safe_name.lower().endswith(ext):
+                safe_name += ext
+            # prefix with ID to avoid collisions
+            filename = f"{s.id:04d}_{safe_name}"
+            path = _os.path.join(dl_dir, filename)
+            try:
+                data = client.download_screenshot(flow_id, s.id)
+                with open(path, "wb") as fh:
+                    fh.write(data)
+                click.echo(f"  ✓  {filename}  ({len(data):,} bytes)")
+                saved += 1
+            except PentAGIError as exc:
+                click.echo(f"  ✗  {filename}  ({exc})", err=True)
+        click.echo(f"\nSaved {saved}/{len(shots)} file(s).")
+
+
+# ---------------------------------------------------------------------------
+# flowgraph
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.pass_context
+def flowgraph(ctx, flow_id: int):
+    """Show the flow execution tree: flow → tasks → subtasks.
+
+    Example:
+
+        pentagi flowgraph 42
+        pentagi --raw flowgraph 42
+    """
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/graph"))
+            return
+        graph = client.get_flow_graph(flow_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    _STATUS_COLOR = {
+        "finished": "green",
+        "failed":   "red",
+        "running":  "yellow",
+        "waiting":  "cyan",
+        "created":  "white",
+    }
+
+    def _colored_status(status: str) -> str:
+        return click.style(status, fg=_STATUS_COLOR.get(status, "white"))
+
+    title  = graph.get("title", "")
+    status = graph.get("status", "")
+    click.echo(f"\nFlow {flow_id}: \"{title}\"  [{_colored_status(status)}]")
+
+    tasks = graph.get("tasks") or []
+    if not tasks:
+        click.echo("  (no tasks)")
+        return
+
+    for ti, task in enumerate(tasks):
+        is_last_task = ti == len(tasks) - 1
+        t_branch = "└──" if is_last_task else "├──"
+        t_prefix = "    " if is_last_task else "│   "
+
+        t_title  = task.get("title", "")
+        t_status = task.get("status", "")
+        t_id     = task.get("id", "?")
+        click.echo(f"  {t_branch} Task {t_id}: \"{t_title}\"  [{_colored_status(t_status)}]")
+
+        subtasks = task.get("subtasks") or []
+        for si, sub in enumerate(subtasks):
+            is_last_sub = si == len(subtasks) - 1
+            s_branch = "└──" if is_last_sub else "├──"
+            s_title  = sub.get("title", "")
+            s_status = sub.get("status", "")
+            s_id     = sub.get("id", "?")
+            click.echo(
+                f"  {t_prefix} {s_branch} Subtask {s_id}: \"{s_title}\"  [{_colored_status(s_status)}]"
+            )
+
+    click.echo("")
+
+
+# ---------------------------------------------------------------------------
 # reply
 # ---------------------------------------------------------------------------
 
@@ -1373,6 +1585,18 @@ def dump(ctx, flow_id: int, out_dir: str, no_global: bool, no_period: bool):
     _save(
         f"flow_{fid}_usage.json",
         lambda: client._get(f"/flows/{fid}/usage/"),
+    )
+    _save(
+        f"flow_{fid}_vecstorelogs.json",
+        lambda: client._get(f"/flows/{fid}/vecstorelogs/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_screenshots.json",
+        lambda: client._get(f"/flows/{fid}/screenshots/", page=1, type="init", pageSize=-1),
+    )
+    _save(
+        f"flow_{fid}_graph.json",
+        lambda: client._get(f"/flows/{fid}/graph"),
     )
 
     # ------------------------------------------------------------------

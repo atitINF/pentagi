@@ -18,10 +18,12 @@ from .models import (
     MessageLog,
     MessageType,
     ResultFormat,
+    Screenshot,
     SearchLog,
     Subtask,
     Task,
     TermLog,
+    VecstoreLog,
 )
 
 __all__ = [
@@ -31,8 +33,10 @@ __all__ = [
     "Assistant",
     "AssistantLog",
     "Container",
+    "Screenshot",
     "SearchLog",
     "TermLog",
+    "VecstoreLog",
     "PentAGIError",
     "ConfigError",
     "AuthError",
