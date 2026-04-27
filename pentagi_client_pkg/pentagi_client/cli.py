@@ -406,32 +406,60 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
 
     allowed_types = _VERBOSE_ASSISTANT_TYPES if verbose else _DEFAULT_ASSISTANT_TYPES
 
-    def _stream_until_done():
-        """Print assistant messages until a 'done' arrives or stream ends."""
+    def _print_msg(msg) -> bool:
+        """Print one assistant log entry. Returns True if this was a done signal."""
+        if msg.type not in allowed_types:
+            return False
+        if msg.type == MessageType.done:
+            return True
+        ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+        if msg.type in _DEFAULT_ASSISTANT_TYPES:
+            if msg.append_part:
+                click.echo(msg.message, nl=False)
+            else:
+                click.echo(f"\nAssistant: {msg.message}")
+        else:
+            lines = msg.message.splitlines() or [""]
+            click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}", err=True)
+            for line in lines[1:]:
+                click.echo(f"  {line}", err=True)
+        return False
+
+    def _stream_until_done(seen_ids: set):
+        """Print assistant messages until a 'done' arrives or stream ends.
+
+        Fetches historical logs first to handle the race condition where the
+        assistant responds before the WebSocket subscription is established.
+        seen_ids tracks already-printed message IDs across calls.
+        """
+        try:
+            history = client.get_assistant_logs(flow_id, assistant.id)
+            for msg in history:
+                if msg.id in seen_ids:
+                    continue
+                if msg.id is not None:
+                    seen_ids.add(msg.id)
+                if _print_msg(msg):
+                    return
+        except PentAGIError:
+            pass  # history fetch is best-effort
+
         try:
             for msg in client.assistant_messages(flow_id, assistant.id, debug=debug):
                 if msg.type == MessageType.reconnect:
                     click.echo(f"\n[reconnecting…]", err=True)
                     continue
-                if msg.type not in allowed_types:
+                if msg.id in seen_ids:
                     continue
-                if msg.type == MessageType.done:
+                if msg.id is not None:
+                    seen_ids.add(msg.id)
+                if _print_msg(msg):
                     break
-                ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
-                if msg.type in _DEFAULT_ASSISTANT_TYPES:
-                    if msg.append_part:
-                        click.echo(msg.message, nl=False)
-                    else:
-                        click.echo(f"\nAssistant: {msg.message}")
-                else:
-                    lines = msg.message.splitlines() or [""]
-                    click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}", err=True)
-                    for line in lines[1:]:
-                        click.echo(f"  {line}", err=True)
         except PentAGIError as exc:
             _err(str(exc))
 
-    _stream_until_done()
+    seen_ids: set = set()
+    _stream_until_done(seen_ids)
 
     while True:
         try:
@@ -449,7 +477,7 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
             _err(str(exc))
             break
 
-        _stream_until_done()
+        _stream_until_done(seen_ids)
 
     try:
         client.stop_assistant(flow_id, assistant.id)
