@@ -428,24 +428,29 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
     def _stream_until_done(seen_ids: set):
         """Print assistant messages until a 'done' arrives or stream ends.
 
-        Fetches historical logs first to handle the race condition where the
-        assistant responds before the WebSocket subscription is established.
-        seen_ids tracks already-printed message IDs across calls.
+        Starts the WebSocket subscription first (background thread), then
+        fetches REST history to catch any messages that arrived before the
+        subscription was active, then drains new messages from the WS.
+        Deduplicates by message ID across all sources and turns.
         """
+        # 1. Open WS immediately so its background thread starts subscribing
+        #    while we do the history fetch in parallel.
+        stream = client.open_assistant_stream(flow_id, assistant.id, debug=debug)
         try:
-            history = client.get_assistant_logs(flow_id, assistant.id)
-            for msg in history:
-                if msg.id in seen_ids:
-                    continue
-                if msg.id is not None:
-                    seen_ids.add(msg.id)
-                if _print_msg(msg):
-                    return
-        except PentAGIError:
-            pass  # history fetch is best-effort
+            # 2. Fetch history — catches messages that arrived before WS was ready.
+            try:
+                for msg in client.get_assistant_logs(flow_id, assistant.id):
+                    if msg.id in seen_ids:
+                        continue
+                    if msg.id is not None:
+                        seen_ids.add(msg.id)
+                    if _print_msg(msg):
+                        return  # already done from history
+            except PentAGIError:
+                pass  # best-effort
 
-        try:
-            for msg in client.assistant_messages(flow_id, assistant.id, debug=debug):
+            # 3. Drain WS for messages that arrived after or during the history fetch.
+            for msg in stream:
                 if msg.type == MessageType.reconnect:
                     click.echo(f"\n[reconnecting…]", err=True)
                     continue
@@ -457,6 +462,8 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
                     break
         except PentAGIError as exc:
             _err(str(exc))
+        finally:
+            stream.close()
 
     seen_ids: set = set()
     _stream_until_done(seen_ids)

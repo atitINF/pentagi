@@ -198,6 +198,18 @@ class PentAGIClient:
         items = data.get("assistantlogs") or (data if isinstance(data, list) else [])
         return [AssistantLog.from_dict(m) for m in items]
 
+    def open_assistant_stream(
+        self,
+        flow_id: int,
+        assistant_id: int,
+        debug: bool = False,
+    ) -> "AssistantStreamingManager":
+        """Return a started AssistantStreamingManager (WS connects immediately).
+
+        Caller is responsible for calling .close() when done.
+        """
+        return AssistantStreamingManager(self._cfg, flow_id, assistant_id, debug=debug)
+
     def assistant_messages(
         self,
         flow_id: int,
