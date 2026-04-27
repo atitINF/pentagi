@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from datetime import datetime, timezone
 from typing import Optional
@@ -36,12 +37,19 @@ def _err(msg: str) -> None:
     click.echo(f"Error: {msg}", err=True)
 
 
+def _raw(data) -> None:
+    click.echo(json.dumps(data, indent=2, default=str))
+
+
 @click.group()
 @click.option("--env", default=".env", show_default=True, help="Path to .env file")
+@click.option("--raw", is_flag=True, default=False,
+              help="Print raw JSON from the API instead of formatted output")
 @click.pass_context
-def cli(ctx, env: str) -> None:
+def cli(ctx, env: str, raw: bool) -> None:
     ctx.ensure_object(dict)
     ctx.obj["env"] = env
+    ctx.obj["raw"] = raw
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +76,10 @@ def start(ctx, input: str, provider: str, prompt_types, prompt_texts, no_restore
 
     try:
         client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            data = client._post("/flows/", {"input": input, "provider": provider})
+            _raw(data)
+            return
         flow = client.start_flow(
             input=input,
             provider=provider,
@@ -112,6 +124,9 @@ def messages(ctx, flow_id: int, verbose: bool, types: Optional[str], debug: bool
         flow = client.get_flow(flow_id)
         if flow.status.value in ("finished", "failed"):
             click.echo(f"Flow {flow_id} is {flow.status.value} — showing historical logs.", err=True)
+            if ctx.obj["raw"]:
+                _raw(client._get(f"/flows/{flow_id}/msglogs/", page=1, type="init", pageSize=-1))
+                return
             all_msgs = client.get_messages(flow_id)
             filtered = [m for m in all_msgs if m.type.value in allowed]
             if not filtered:
@@ -141,6 +156,10 @@ def messages(ctx, flow_id: int, verbose: bool, types: Optional[str], debug: bool
         sys.exit(1)
 
 
+# ---------------------------------------------------------------------------
+# logs
+# ---------------------------------------------------------------------------
+
 @cli.command()
 @click.argument("flow_id", type=int)
 @click.option("--verbose", is_flag=True, default=False,
@@ -156,6 +175,15 @@ def logs(ctx, flow_id: int, verbose: bool, types: Optional[str], tail: int):
     Unlike 'messages', this works on finished flows and shows everything
     that already happened. Great for debugging or reviewing results.
     """
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/msglogs/", page=1, type="init", pageSize=-1))
+            return
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
     if types:
         allowed = set(t.strip() for t in types.split(","))
     elif verbose:
@@ -164,7 +192,6 @@ def logs(ctx, flow_id: int, verbose: bool, types: Optional[str], tail: int):
         allowed = {t.value for t in _DEFAULT_TYPES}
 
     try:
-        client = _client(ctx.obj["env"])
         all_msgs = client.get_messages(flow_id)
     except PentAGIError as exc:
         _err(str(exc))
@@ -198,6 +225,9 @@ def tasks(ctx, flow_id: int):
     """List tasks for a flow."""
     try:
         client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/tasks/", page=1, type="init", pageSize=-1))
+            return
         task_list = client.get_tasks(flow_id)
     except PentAGIError as exc:
         _err(str(exc))
@@ -225,6 +255,12 @@ def subtasks(ctx, flow_id: int, task_id: int):
     """List subtasks for a task."""
     try:
         client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(
+                f"/flows/{flow_id}/tasks/{task_id}/subtasks/",
+                page=1, type="init", pageSize=-1,
+            ))
+            return
         sub_list = client.get_subtasks(flow_id, task_id)
     except PentAGIError as exc:
         _err(str(exc))
@@ -253,6 +289,9 @@ def subtask(ctx, flow_id: int, task_id: int, subtask_id: int):
     """Show detail for a single subtask."""
     try:
         client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/tasks/{task_id}/subtasks/{subtask_id}"))
+            return
         s = client.get_subtask(flow_id, task_id, subtask_id)
     except PentAGIError as exc:
         _err(str(exc))
@@ -277,6 +316,9 @@ def allsubtasks(ctx, flow_id: int):
     """List every subtask across all tasks for a flow."""
     try:
         client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/subtasks/", page=1, type="init", pageSize=-1))
+            return
         sub_list = client.get_all_subtasks(flow_id)
     except PentAGIError as exc:
         _err(str(exc))
@@ -316,7 +358,7 @@ def reply(ctx, flow_id: int, input: str):
 
 
 # ---------------------------------------------------------------------------
-# stop
+# chat
 # ---------------------------------------------------------------------------
 
 @cli.command()
@@ -377,13 +419,11 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
                     break
                 ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
                 if msg.type in _DEFAULT_ASSISTANT_TYPES:
-                    # Final answer — print cleanly
                     if msg.append_part:
                         click.echo(msg.message, nl=False)
                     else:
                         click.echo(f"\nAssistant: {msg.message}")
                 else:
-                    # Verbose-only tool/thought messages
                     lines = msg.message.splitlines() or [""]
                     click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}", err=True)
                     for line in lines[1:]:
@@ -391,10 +431,8 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
         except PentAGIError as exc:
             _err(str(exc))
 
-    # Stream the response to the opening message
     _stream_until_done()
 
-    # Interactive loop
     while True:
         try:
             click.echo("")
@@ -420,6 +458,10 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
 
     click.echo("\nChat session ended.")
 
+
+# ---------------------------------------------------------------------------
+# stop
+# ---------------------------------------------------------------------------
 
 @cli.command()
 @click.argument("flow_id", type=int)
