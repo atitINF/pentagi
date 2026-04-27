@@ -8,7 +8,7 @@ import requests as _requests
 from .config import Config
 from .exceptions import APIError, AuthError
 from .exceptions import ConnectionError as PentAGIConnectionError
-from .models import Assistant, AssistantLog, Flow, MessageLog, Subtask, Task
+from .models import AgentLog, Assistant, AssistantLog, Flow, MessageLog, Subtask, Task
 from .streaming import AssistantStreamingManager, StreamingManager
 
 
@@ -217,6 +217,12 @@ class PentAGIClient:
         logs = [AssistantLog.from_dict(m) for m in items]
         return [log for log in logs if log.assistant_id == assistant_id]
 
+    def get_all_assistant_logs(self, flow_id: int) -> List[AssistantLog]:
+        """Fetch all assistant logs for a flow, sorted by creation time."""
+        data = self._get(f"/flows/{flow_id}/assistantlogs/", page=1, type="init", pageSize=-1)
+        items = data.get("assistantlogs") or (data if isinstance(data, list) else [])
+        return [AssistantLog.from_dict(m) for m in items]
+
     def open_assistant_stream(
         self,
         flow_id: int,
@@ -241,6 +247,44 @@ class PentAGIClient:
                 yield msg
         finally:
             manager.close()
+
+    # ------------------------------------------------------------------
+    # Usage / analytics
+    # ------------------------------------------------------------------
+
+    def get_usage(self) -> dict:
+        """System-wide token usage and analytics for the authenticated user."""
+        return self._get("/usage/")
+
+    def get_period_usage(self, period: str) -> dict:
+        """Time-series usage analytics. period must be 'week', 'month', or 'quarter'."""
+        if period not in ("week", "month", "quarter"):
+            raise ValueError(f"period must be 'week', 'month', or 'quarter', got {period!r}")
+        return self._get(f"/usage/{period}")
+
+    def get_flow_usage(self, flow_id: int) -> dict:
+        """Token usage and analytics scoped to a single flow."""
+        return self._get(f"/flows/{flow_id}/usage/")
+
+    # ------------------------------------------------------------------
+    # Agent logs
+    # ------------------------------------------------------------------
+
+    def get_agent_logs(
+        self,
+        flow_id: int,
+        task_id: Optional[int] = None,
+        subtask_id: Optional[int] = None,
+    ) -> List[AgentLog]:
+        """Fetch agent interaction logs for a flow, optionally filtered by task/subtask."""
+        data = self._get(f"/flows/{flow_id}/agentlogs/", page=1, type="init", pageSize=-1)
+        items = data.get("agentlogs") or (data if isinstance(data, list) else [])
+        logs = [AgentLog.from_dict(i) for i in items]
+        if task_id is not None:
+            logs = [l for l in logs if l.task_id == task_id]
+        if subtask_id is not None:
+            logs = [l for l in logs if l.subtask_id == subtask_id]
+        return logs
 
     # ------------------------------------------------------------------
     # Streaming

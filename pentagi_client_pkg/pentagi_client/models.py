@@ -240,6 +240,36 @@ class AssistantLog:
 
 
 @dataclass
+class AgentLog:
+    id: Optional[int]
+    flow_id: Optional[int]
+    task_id: Optional[int]
+    subtask_id: Optional[int]
+    initiator: str
+    executor: str
+    task: str
+    result: str
+    created_at: Optional[datetime]
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AgentLog":
+        raw_flow = d.get("flow_id") or d.get("flowId")
+        raw_task = d.get("task_id") or d.get("taskId")
+        raw_sub  = d.get("subtask_id") or d.get("subtaskId")
+        return cls(
+            id=int(d["id"]) if d.get("id") is not None else None,
+            flow_id=int(raw_flow) if raw_flow is not None else None,
+            task_id=int(raw_task) if raw_task is not None else None,
+            subtask_id=int(raw_sub) if raw_sub is not None else None,
+            initiator=d.get("initiator", ""),
+            executor=d.get("executor", ""),
+            task=d.get("task", ""),
+            result=d.get("result", ""),
+            created_at=_parse_dt(d.get("created_at") or d.get("createdAt")),
+        )
+
+
+@dataclass
 class MessageLog:
     id: Optional[int]
     flow_id: Optional[int]

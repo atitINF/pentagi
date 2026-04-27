@@ -602,6 +602,421 @@ def ask(ctx, flow_id: int, message: str, provider: str, no_agents: bool,
 
 
 # ---------------------------------------------------------------------------
+# assistlogs  (non-streaming, all assistant conversations for a flow)
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--assistant-id", "filter_assistant_id", default=None, type=int,
+              help="Only show logs for a specific assistant session")
+@click.option("--verbose", is_flag=True, default=False,
+              help="Show all message types including thoughts, searches, tool output")
+@click.pass_context
+def assistlogs(ctx, flow_id: int, filter_assistant_id: Optional[int], verbose: bool):
+    """Show all previous assistant conversations for a flow (REST, non-streaming).
+
+    Conversations are grouped by assistant session ID and printed in order.
+    Use --assistant-id to filter to a single session.
+
+    Example:
+
+        pentagi assistlogs 42
+        pentagi assistlogs 42 --assistant-id 7
+    """
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/assistantlogs/", page=1, type="init", pageSize=-1))
+            return
+        all_logs = client.get_all_assistant_logs(flow_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not all_logs:
+        click.echo("No assistant logs found.")
+        return
+
+    allowed_types = (_DEFAULT_TYPES | _VERBOSE_EXTRA) if verbose else _DEFAULT_TYPES
+
+    # Group by assistant_id preserving insertion order
+    sessions: dict = {}
+    for log in all_logs:
+        aid = log.assistant_id
+        if filter_assistant_id is not None and aid != filter_assistant_id:
+            continue
+        if log.type not in allowed_types:
+            continue
+        sessions.setdefault(aid, []).append(log)
+
+    if not sessions:
+        click.echo("No matching assistant logs found.")
+        return
+
+    for aid, msgs in sessions.items():
+        label = f"Assistant session {aid}" if aid is not None else "Assistant session (unknown)"
+        click.echo(f"\n{'='*60}")
+        click.echo(f"  {label}")
+        click.echo(f"{'='*60}")
+        for msg in msgs:
+            if msg.type == MessageType.done:
+                click.echo("  [done]")
+                continue
+            ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+            prefix = "  Assistant" if msg.type.value in ("answer", "report") else f"  [{msg.type.value}]"
+            lines = msg.message.splitlines() or [""]
+            click.echo(f"  [{ts}] {prefix}: {lines[0]}")
+            for line in lines[1:]:
+                click.echo(f"    {line}")
+        click.echo("")
+
+
+# ---------------------------------------------------------------------------
+# usage
+# ---------------------------------------------------------------------------
+
+def _fmt_tokens(n: int) -> str:
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.2f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return str(n)
+
+
+def _fmt_cost(v: float) -> str:
+    return f"${v:.4f}"
+
+
+def _fmt_duration(seconds: float) -> str:
+    if seconds >= 3600:
+        return f"{seconds / 3600:.1f}h"
+    if seconds >= 60:
+        return f"{seconds / 60:.1f}m"
+    return f"{seconds:.1f}s"
+
+
+def _print_usage_stats(label: str, s: dict) -> None:
+    tokens_in  = s.get("total_usage_in", 0)
+    tokens_out = s.get("total_usage_out", 0)
+    cache_in   = s.get("total_usage_cache_in", 0)
+    cache_out  = s.get("total_usage_cache_out", 0)
+    cost_in    = s.get("total_usage_cost_in", 0.0)
+    cost_out   = s.get("total_usage_cost_out", 0.0)
+    click.echo(f"  {label}")
+    click.echo(f"    Tokens in:    {_fmt_tokens(tokens_in):>10}   cost: {_fmt_cost(cost_in)}")
+    click.echo(f"    Tokens out:   {_fmt_tokens(tokens_out):>10}   cost: {_fmt_cost(cost_out)}")
+    click.echo(f"    Cache in:     {_fmt_tokens(cache_in):>10}")
+    click.echo(f"    Cache out:    {_fmt_tokens(cache_out):>10}")
+    click.echo(f"    Total cost:   {_fmt_cost(cost_in + cost_out):>10}")
+
+
+@cli.command()
+@click.option("--flow-id", default=None, type=int,
+              help="Show usage for a specific flow instead of the whole account")
+@click.option("--period", default=None,
+              type=click.Choice(["week", "month", "quarter"], case_sensitive=False),
+              help="Show time-series breakdown for the given period (system-wide only)")
+@click.option("--by-model", is_flag=True, default=False,
+              help="Include per-model token breakdown")
+@click.option("--by-agent", is_flag=True, default=False,
+              help="Include per-agent-type token breakdown")
+@click.option("--tools", "show_tools", is_flag=True, default=False,
+              help="Include tool-call stats")
+@click.pass_context
+def usage(ctx, flow_id: Optional[int], period: Optional[str],
+          by_model: bool, by_agent: bool, show_tools: bool):
+    """Show token usage and cost statistics (like the Dashboard screen).
+
+    Without options prints account-wide totals. Use --flow-id for a single
+    flow, or --period for a daily time-series breakdown.
+
+    Examples:
+
+        pentagi usage
+        pentagi usage --flow-id 42
+        pentagi usage --period month --by-model
+        pentagi --raw usage
+    """
+    try:
+        client = _client(ctx.obj["env"])
+
+        if ctx.obj["raw"]:
+            if flow_id is not None:
+                _raw(client._get(f"/flows/{flow_id}/usage/"))
+            elif period:
+                _raw(client._get(f"/usage/{period}"))
+            else:
+                _raw(client._get("/usage/"))
+            return
+
+        if flow_id is not None:
+            data = client.get_flow_usage(flow_id)
+            _print_flow_usage(data, flow_id, by_agent=by_agent, show_tools=show_tools)
+        elif period:
+            data = client.get_period_usage(period)
+            _print_period_usage(data, period)
+        else:
+            data = client.get_usage()
+            _print_system_usage(data, by_model=by_model, by_agent=by_agent, show_tools=show_tools)
+
+    except (PentAGIError, ValueError) as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+
+def _print_system_usage(data: dict, by_model: bool, by_agent: bool, show_tools: bool) -> None:
+    click.echo("\n=== Account Usage ===\n")
+
+    total = data.get("usage_stats_total") or {}
+    _print_usage_stats("Total", total)
+
+    flows = data.get("flows_stats_total") or {}
+    click.echo(f"\n  Flows:      {flows.get('total_flows_count', 0)}")
+    click.echo(f"  Tasks:      {flows.get('total_tasks_count', 0)}")
+    click.echo(f"  Subtasks:   {flows.get('total_subtasks_count', 0)}")
+    click.echo(f"  Assistants: {flows.get('total_assistants_count', 0)}")
+
+    by_provider = data.get("usage_stats_by_provider") or []
+    if by_provider:
+        click.echo("\n--- By Provider ---")
+        for entry in by_provider:
+            _print_usage_stats(entry.get("provider", "?"), entry.get("stats") or {})
+
+    if by_model:
+        by_model_data = data.get("usage_stats_by_model") or []
+        if by_model_data:
+            click.echo("\n--- By Model ---")
+            for entry in by_model_data:
+                label = f"{entry.get('provider', '?')} / {entry.get('model', '?')}"
+                _print_usage_stats(label, entry.get("stats") or {})
+
+    if by_agent:
+        by_agent_data = data.get("usage_stats_by_agent_type") or []
+        if by_agent_data:
+            click.echo("\n--- By Agent Type ---")
+            for entry in by_agent_data:
+                _print_usage_stats(entry.get("agent_type", "?"), entry.get("stats") or {})
+
+    if show_tools:
+        tc = data.get("toolcalls_stats_total") or {}
+        click.echo(f"\n--- Tool Calls ---")
+        click.echo(f"  Total calls:    {tc.get('total_count', 0)}")
+        click.echo(f"  Total duration: {_fmt_duration(tc.get('total_duration_seconds', 0.0))}")
+        by_fn = data.get("toolcalls_stats_by_function") or []
+        if by_fn:
+            click.echo(f"\n  {'Tool':<35} {'Calls':>6} {'Total':>8} {'Avg':>8}  Agent")
+            click.echo(f"  {'-'*35} {'------':>6} {'--------':>8} {'--------':>8}  -----")
+            for fn in by_fn:
+                agent_mark = "yes" if fn.get("is_agent") else ""
+                click.echo(
+                    f"  {fn.get('function_name', '?'):<35} "
+                    f"{fn.get('total_count', 0):>6} "
+                    f"{_fmt_duration(fn.get('total_duration_seconds', 0.0)):>8} "
+                    f"{_fmt_duration(fn.get('avg_duration_seconds', 0.0)):>8}  {agent_mark}"
+                )
+
+
+def _print_flow_usage(data: dict, flow_id: int, by_agent: bool, show_tools: bool) -> None:
+    click.echo(f"\n=== Flow {flow_id} Usage ===\n")
+
+    flow_stats = data.get("usage_stats_by_flow") or {}
+    _print_usage_stats("Total", flow_stats)
+
+    struct = data.get("flow_stats_by_flow") or {}
+    click.echo(f"\n  Tasks:      {struct.get('total_tasks_count', 0)}")
+    click.echo(f"  Subtasks:   {struct.get('total_subtasks_count', 0)}")
+    click.echo(f"  Assistants: {struct.get('total_assistants_count', 0)}")
+
+    if by_agent:
+        by_agent_data = data.get("usage_stats_by_agent_type_for_flow") or []
+        if by_agent_data:
+            click.echo("\n--- By Agent Type ---")
+            for entry in by_agent_data:
+                _print_usage_stats(entry.get("agent_type", "?"), entry.get("stats") or {})
+
+    if show_tools:
+        tc = data.get("toolcalls_stats_by_flow") or {}
+        click.echo(f"\n--- Tool Calls ---")
+        click.echo(f"  Total calls:    {tc.get('total_count', 0)}")
+        click.echo(f"  Total duration: {_fmt_duration(tc.get('total_duration_seconds', 0.0))}")
+        by_fn = data.get("toolcalls_stats_by_function_for_flow") or []
+        if by_fn:
+            click.echo(f"\n  {'Tool':<35} {'Calls':>6} {'Total':>8} {'Avg':>8}  Agent")
+            click.echo(f"  {'-'*35} {'------':>6} {'--------':>8} {'--------':>8}  -----")
+            for fn in by_fn:
+                agent_mark = "yes" if fn.get("is_agent") else ""
+                click.echo(
+                    f"  {fn.get('function_name', '?'):<35} "
+                    f"{fn.get('total_count', 0):>6} "
+                    f"{_fmt_duration(fn.get('total_duration_seconds', 0.0)):>8} "
+                    f"{_fmt_duration(fn.get('avg_duration_seconds', 0.0)):>8}  {agent_mark}"
+                )
+
+
+def _print_period_usage(data: dict, period: str) -> None:
+    click.echo(f"\n=== Usage by Day ({period}) ===\n")
+    daily = data.get("usage_stats_by_period") or []
+    if not daily:
+        click.echo("  No data for this period.")
+        return
+    click.echo(f"  {'Date':<12} {'In':>10} {'Out':>10} {'CacheIn':>10} {'Cost':>10}")
+    click.echo(f"  {'-'*12} {'----------':>10} {'----------':>10} {'----------':>10} {'----------':>10}")
+    for entry in daily:
+        date = (entry.get("date") or "")[:10]
+        s = entry.get("stats") or {}
+        click.echo(
+            f"  {date:<12} "
+            f"{_fmt_tokens(s.get('total_usage_in', 0)):>10} "
+            f"{_fmt_tokens(s.get('total_usage_out', 0)):>10} "
+            f"{_fmt_tokens(s.get('total_usage_cache_in', 0)):>10} "
+            f"{_fmt_cost(s.get('total_usage_cost_in', 0.0) + s.get('total_usage_cost_out', 0.0)):>10}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# agentlogs
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--task-id", default=None, type=int, help="Filter to a specific task ID")
+@click.option("--subtask-id", default=None, type=int, help="Filter to a specific subtask ID")
+@click.option("--tail", default=0, type=int, help="Show only the last N entries (0 = all)")
+@click.option("--show-result/--no-result", default=True, show_default=True,
+              help="Include the agent result text")
+@click.pass_context
+def agentlogs(ctx, flow_id: int, task_id: Optional[int], subtask_id: Optional[int],
+              tail: int, show_result: bool):
+    """Show agent interaction logs for a flow.
+
+    Each entry records one agent-to-agent call: which agent (initiator) delegated
+    a task to which agent (executor), what the task was, and what came back.
+
+    Example:
+
+        pentagi agentlogs 42
+        pentagi agentlogs 42 --subtask-id 5
+        pentagi agentlogs 42 --tail 20 --no-result
+        pentagi --raw agentlogs 42
+    """
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/agentlogs/", page=1, type="init", pageSize=-1))
+            return
+        entries = client.get_agent_logs(flow_id, task_id=task_id, subtask_id=subtask_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not entries:
+        click.echo("No agent logs found.")
+        return
+
+    if tail > 0:
+        entries = entries[-tail:]
+
+    for entry in entries:
+        ts = (entry.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+        scope = ""
+        if entry.task_id is not None:
+            scope = f" task={entry.task_id}"
+            if entry.subtask_id is not None:
+                scope += f"/sub={entry.subtask_id}"
+        click.echo(
+            f"[{ts}]{scope} {entry.initiator} → {entry.executor}"
+        )
+        task_lines = entry.task.splitlines()
+        click.echo(f"  Task: {task_lines[0]}")
+        for line in task_lines[1:]:
+            click.echo(f"        {line}")
+        if show_result and entry.result:
+            result_lines = entry.result.splitlines()
+            click.echo(f"  Result: {result_lines[0]}")
+            for line in result_lines[1:]:
+                click.echo(f"          {line}")
+        click.echo("")
+
+
+# ---------------------------------------------------------------------------
+# findings  (JSON Output subtask extraction)
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--compact", is_flag=True, default=False,
+              help="Output compact JSON (no pretty-print)")
+@click.option("--subtask-name", default="JSON Output", show_default=True,
+              help="Exact subtask title to search for")
+@click.pass_context
+def findings(ctx, flow_id: int, compact: bool, subtask_name: str):
+    """Extract structured findings JSON from the final 'JSON Output' subtask.
+
+    Searches all subtasks for the last one matching the subtask name (default:
+    'JSON Output'), parses its result field as JSON, and prints it.
+    If the result contains surrounding text the JSON array is extracted
+    automatically.
+
+    Example:
+
+        pentagi findings 42
+        pentagi findings 42 --compact
+        pentagi --raw findings 42
+    """
+    import re as _re
+
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/subtasks/", page=1, type="init", pageSize=-1))
+            return
+        all_subs = client.get_all_subtasks(flow_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    # Find the last subtask whose title exactly matches the expected name.
+    json_subtask = None
+    for s in reversed(all_subs):
+        if s.title.strip() == subtask_name:
+            json_subtask = s
+            break
+
+    if json_subtask is None:
+        _err(f"No '{subtask_name}' subtask found for flow {flow_id}.")
+        click.echo(f"Available subtask titles:", err=True)
+        for s in all_subs:
+            click.echo(f"  [{s.id}] {s.title}", err=True)
+        sys.exit(1)
+
+    raw_result = (json_subtask.result or "").strip()
+
+    if not raw_result:
+        click.echo("[]")
+        return
+
+    # Try direct parse first; if that fails, extract first [...] block.
+    data = None
+    try:
+        data = json.loads(raw_result)
+    except json.JSONDecodeError:
+        match = _re.search(r"\[.*\]", raw_result, _re.DOTALL)
+        if match:
+            try:
+                data = json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+    if data is None:
+        _err("Could not parse JSON from the subtask result. Raw content:")
+        click.echo(raw_result)
+        sys.exit(1)
+
+    indent = None if compact else 2
+    click.echo(json.dumps(data, indent=indent))
+
+
+# ---------------------------------------------------------------------------
 # stop
 # ---------------------------------------------------------------------------
 
