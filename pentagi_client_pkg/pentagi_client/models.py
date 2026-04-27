@@ -214,10 +214,12 @@ class AssistantLog:
 
     @classmethod
     def from_dict(cls, d: dict) -> "AssistantLog":
+        raw_flow = d.get("flowId") or d.get("flow_id")
+        raw_aid  = d.get("assistantId") or d.get("assistant_id")
         return cls(
             id=int(d["id"]) if d.get("id") is not None else None,
-            flow_id=int(d["flowId"]) if d.get("flowId") is not None else None,
-            assistant_id=int(d["assistantId"]) if d.get("assistantId") is not None else None,
+            flow_id=int(raw_flow) if raw_flow is not None else None,
+            assistant_id=int(raw_aid) if raw_aid is not None else None,
             type=_message_type(d.get("type", "answer")),
             message=d.get("message", ""),
             result=d.get("result") or None,

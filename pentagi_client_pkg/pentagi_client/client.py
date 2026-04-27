@@ -190,13 +190,10 @@ class PentAGIClient:
 
     def get_assistant_logs(self, flow_id: int, assistant_id: int) -> List[AssistantLog]:
         """Fetch historical assistant log entries for a specific assistant."""
-        data = self._get(
-            f"/flows/{flow_id}/assistantlogs/",
-            page=1, type="init", pageSize=-1,
-            **{"filters[assistant_id]": assistant_id},
-        )
+        data = self._get(f"/flows/{flow_id}/assistantlogs/", page=1, type="init", pageSize=-1)
         items = data.get("assistantlogs") or (data if isinstance(data, list) else [])
-        return [AssistantLog.from_dict(m) for m in items]
+        logs = [AssistantLog.from_dict(m) for m in items]
+        return [log for log in logs if log.assistant_id == assistant_id]
 
     def open_assistant_stream(
         self,

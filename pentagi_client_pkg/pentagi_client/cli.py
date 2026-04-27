@@ -460,6 +460,18 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
                     seen_ids.add(msg.id)
                 if _print_msg(msg):
                     break
+
+            # 4. Final history poll — catches anything that slipped through
+            #    between the first fetch and the WS closing/timing out.
+            try:
+                for msg in client.get_assistant_logs(flow_id, assistant.id):
+                    if msg.id in seen_ids:
+                        continue
+                    if msg.id is not None:
+                        seen_ids.add(msg.id)
+                    _print_msg(msg)
+            except PentAGIError:
+                pass
         except PentAGIError as exc:
             _err(str(exc))
         finally:

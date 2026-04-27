@@ -257,8 +257,16 @@ class AssistantStreamingManager:
     def __iter__(self):
         return self
 
+    # How long to wait for any assistant message before giving up.
+    # ka keep-alives are not queued, so this is purely inactivity time.
+    _RESPONSE_TIMEOUT = 60
+
     def __next__(self) -> AssistantLog:
-        item = self._queue.get()
+        try:
+            item = self._queue.get(timeout=self._RESPONSE_TIMEOUT)
+        except queue.Empty:
+            self.close()
+            raise StopIteration
         if item is _SENTINEL:
             if self._last_error:
                 raise StreamError(self._last_error)
