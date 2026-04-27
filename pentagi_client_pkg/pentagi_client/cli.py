@@ -507,6 +507,101 @@ def chat(ctx, flow_id: int, message: str, provider: str, no_agents: bool, verbos
 
 
 # ---------------------------------------------------------------------------
+# ask  (non-streaming chat via REST polling)
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.argument("message")
+@click.option("--provider", default="openai", show_default=True,
+              help="LLM provider for the assistant")
+@click.option("--no-agents", is_flag=True, default=False,
+              help="Disable multi-agent mode (assistant only)")
+@click.option("--timeout", default=120, type=int, show_default=True,
+              help="Seconds to wait for each response before giving up")
+@click.option("--poll", default=2, type=float, show_default=True,
+              help="Polling interval in seconds")
+@click.pass_context
+def ask(ctx, flow_id: int, message: str, provider: str, no_agents: bool,
+        timeout: int, poll: float):
+    """Non-streaming chat: polls the REST API instead of using WebSocket.
+
+    More reliable than 'chat' when the WebSocket connection is flaky.
+    Creates an assistant, waits for the response via polling, then lets
+    you keep asking follow-up questions. Ctrl-C or 'exit' to quit.
+
+    Example:
+
+        pentagi ask 42 "What vulnerabilities have been found?" --provider gemini
+    """
+    try:
+        client = _client(ctx.obj["env"])
+        assistant = client.create_assistant(
+            flow_id=flow_id,
+            input=message,
+            provider=provider,
+            use_agents=not no_agents,
+        )
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    click.echo(f"Assistant {assistant.id} ready. Ctrl-C or type 'exit' to quit.\n")
+
+    seen_ids: set = set()
+
+    def _poll_and_print():
+        click.echo("Waiting for response…", err=True)
+        new_msgs = client.wait_for_assistant_response(
+            flow_id, assistant.id, seen_ids,
+            timeout=timeout, poll_interval=poll,
+        )
+        if not new_msgs:
+            click.echo("(no response within timeout)", err=True)
+            return
+        for msg in new_msgs:
+            if msg.id is not None:
+                seen_ids.add(msg.id)
+            if msg.type.value in ("input", "done"):
+                continue
+            ts = (msg.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+            if msg.type.value in ("answer", "report"):
+                click.echo(f"\nAssistant: {msg.message}")
+            else:
+                lines = msg.message.splitlines() or [""]
+                click.echo(f"[{ts}] [{msg.type.value}] {lines[0]}")
+                for line in lines[1:]:
+                    click.echo(f"  {line}")
+
+    _poll_and_print()
+
+    while True:
+        try:
+            click.echo("")
+            user_input = click.prompt("You", prompt_suffix="> ")
+        except (click.Abort, EOFError, KeyboardInterrupt):
+            break
+
+        if user_input.strip().lower() in ("exit", "quit", "q"):
+            break
+
+        try:
+            client.reply_to_assistant(flow_id, assistant.id, user_input)
+        except PentAGIError as exc:
+            _err(str(exc))
+            break
+
+        _poll_and_print()
+
+    try:
+        client.stop_assistant(flow_id, assistant.id)
+    except PentAGIError:
+        pass
+
+    click.echo("\nSession ended.")
+
+
+# ---------------------------------------------------------------------------
 # stop
 # ---------------------------------------------------------------------------
 

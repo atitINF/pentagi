@@ -188,6 +188,28 @@ class PentAGIClient:
                 return
             raise
 
+    def wait_for_assistant_response(
+        self,
+        flow_id: int,
+        assistant_id: int,
+        seen_ids: set,
+        timeout: int = 120,
+        poll_interval: float = 2.0,
+    ) -> List[AssistantLog]:
+        """Poll assistant logs until new messages appear or timeout is reached.
+
+        Returns only messages not already in seen_ids.
+        """
+        import time as _time
+        deadline = _time.monotonic() + timeout
+        while _time.monotonic() < deadline:
+            logs = self.get_assistant_logs(flow_id, assistant_id)
+            new = [m for m in logs if m.id not in seen_ids]
+            if new:
+                return new
+            _time.sleep(poll_interval)
+        return []
+
     def get_assistant_logs(self, flow_id: int, assistant_id: int) -> List[AssistantLog]:
         """Fetch historical assistant log entries for a specific assistant."""
         data = self._get(f"/flows/{flow_id}/assistantlogs/", page=1, type="init", pageSize=-1)
