@@ -12,13 +12,16 @@ from .models import (
     AgentLog,
     Assistant,
     AssistantLog,
+    Container,
     Flow,
     FlowStatus,
     MessageLog,
     MessageType,
     ResultFormat,
+    SearchLog,
     Subtask,
     Task,
+    TermLog,
 )
 
 __all__ = [
@@ -27,6 +30,9 @@ __all__ = [
     "AgentLog",
     "Assistant",
     "AssistantLog",
+    "Container",
+    "SearchLog",
+    "TermLog",
     "PentAGIError",
     "ConfigError",
     "AuthError",

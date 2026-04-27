@@ -339,6 +339,235 @@ def allsubtasks(ctx, flow_id: int):
 
 
 # ---------------------------------------------------------------------------
+# flows  (list all)
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.option("--status", default=None,
+              help="Filter by status (created, running, waiting, finished, failed)")
+@click.pass_context
+def flows(ctx, status: Optional[str]):
+    """List all flows for the authenticated user."""
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get("/flows/", page=1, type="init", pageSize=-1))
+            return
+        flow_list = client.list_flows()
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if status:
+        flow_list = [f for f in flow_list if f.status.value == status]
+
+    if not flow_list:
+        click.echo("No flows found.")
+        return
+
+    click.echo(f"{'ID':<6} {'STATUS':<10} {'PROVIDER':<12} {'CREATED':<20} TITLE")
+    click.echo(f"{'--':<6} {'--------':<10} {'--------':<12} {'-------':<20} -----")
+    for f in flow_list:
+        created = f.created_at.strftime("%Y-%m-%d %H:%M") if f.created_at else ""
+        click.echo(f"{f.id:<6} {f.status.value:<10} {f.provider:<12} {created:<20} {f.title}")
+
+
+# ---------------------------------------------------------------------------
+# flow  (single)
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.pass_context
+def flow(ctx, flow_id: int):
+    """Show details for a single flow."""
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}"))
+            return
+        f = client.get_flow(flow_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    click.echo(f"ID:         {f.id}")
+    click.echo(f"Title:      {f.title}")
+    click.echo(f"Status:     {f.status.value}")
+    click.echo(f"Provider:   {f.provider}")
+    click.echo(f"Created:    {f.created_at.strftime('%Y-%m-%d %H:%M:%S') if f.created_at else '—'}")
+    click.echo(f"Updated:    {f.updated_at.strftime('%Y-%m-%d %H:%M:%S') if f.updated_at else '—'}")
+
+
+# ---------------------------------------------------------------------------
+# delete
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--yes", is_flag=True, default=False, help="Skip confirmation prompt")
+@click.pass_context
+def delete(ctx, flow_id: int, yes: bool):
+    """Delete a flow permanently."""
+    if not yes:
+        click.confirm(f"Delete flow {flow_id}? This cannot be undone.", abort=True)
+    try:
+        client = _client(ctx.obj["env"])
+        client.delete_flow(flow_id)
+        click.echo(f"Flow {flow_id} deleted.")
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
+# containers
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.pass_context
+def containers(ctx, flow_id: int):
+    """List Docker containers spawned for a flow."""
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/containers/", page=1, type="init", pageSize=-1))
+            return
+        ctr_list = client.get_containers(flow_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not ctr_list:
+        click.echo("No containers found.")
+        return
+
+    click.echo(f"{'ID':<6} {'TYPE':<10} {'STATUS':<10} {'IMAGE':<30} NAME")
+    click.echo(f"{'--':<6} {'----':<10} {'------':<10} {'-----':<30} ----")
+    for c in ctr_list:
+        click.echo(f"{c.id or '?':<6} {c.type:<10} {c.status:<10} {c.image:<30} {c.name}")
+
+
+# ---------------------------------------------------------------------------
+# termlogs
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--types", default=None,
+              help="Comma-separated type filter: stdin,stdout,stderr (default: all)")
+@click.option("--task-id", default=None, type=int, help="Filter to a specific task")
+@click.option("--subtask-id", default=None, type=int, help="Filter to a specific subtask")
+@click.option("--tail", default=0, type=int, help="Show only the last N lines (0 = all)")
+@click.option("--no-header", is_flag=True, default=False,
+              help="Suppress timestamp/type prefix — raw terminal text only")
+@click.pass_context
+def termlogs(ctx, flow_id: int, types: Optional[str], task_id: Optional[int],
+             subtask_id: Optional[int], tail: int, no_header: bool):
+    """Show terminal (stdin/stdout/stderr) logs for a flow.
+
+    Example:
+
+        pentagi termlogs 42
+        pentagi termlogs 42 --types stdout,stderr
+        pentagi termlogs 42 --subtask-id 5 --no-header
+    """
+    type_filter = [t.strip() for t in types.split(",")] if types else None
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/termlogs/", page=1, type="init", pageSize=-1))
+            return
+        entries = client.get_term_logs(
+            flow_id, types=type_filter, task_id=task_id, subtask_id=subtask_id,
+        )
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not entries:
+        click.echo("No terminal logs found.")
+        return
+
+    if tail > 0:
+        entries = entries[-tail:]
+
+    _TYPE_COLOR = {"stdin": "blue", "stdout": "green", "stderr": "red"}
+
+    for entry in entries:
+        if no_header:
+            click.echo(entry.text, nl=not entry.text.endswith("\n"))
+        else:
+            ts = (entry.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+            scope = ""
+            if entry.task_id is not None:
+                scope = f" task={entry.task_id}"
+                if entry.subtask_id is not None:
+                    scope += f"/sub={entry.subtask_id}"
+            label = click.style(entry.type, fg=_TYPE_COLOR.get(entry.type, "white"))
+            click.echo(f"[{ts}]{scope} [{label}] {entry.text}", nl=not entry.text.endswith("\n"))
+
+
+# ---------------------------------------------------------------------------
+# searchlogs
+# ---------------------------------------------------------------------------
+
+@cli.command()
+@click.argument("flow_id", type=int)
+@click.option("--task-id", default=None, type=int, help="Filter to a specific task")
+@click.option("--subtask-id", default=None, type=int, help="Filter to a specific subtask")
+@click.option("--show-result/--no-result", default=False, show_default=True,
+              help="Include the full search result text")
+@click.option("--tail", default=0, type=int, help="Show only the last N entries (0 = all)")
+@click.pass_context
+def searchlogs(ctx, flow_id: int, task_id: Optional[int], subtask_id: Optional[int],
+               show_result: bool, tail: int):
+    """Show web/search queries made by agents during a flow.
+
+    Example:
+
+        pentagi searchlogs 42
+        pentagi searchlogs 42 --show-result
+        pentagi searchlogs 42 --subtask-id 5
+    """
+    try:
+        client = _client(ctx.obj["env"])
+        if ctx.obj["raw"]:
+            _raw(client._get(f"/flows/{flow_id}/searchlogs/", page=1, type="init", pageSize=-1))
+            return
+        entries = client.get_search_logs(flow_id, task_id=task_id, subtask_id=subtask_id)
+    except PentAGIError as exc:
+        _err(str(exc))
+        sys.exit(1)
+
+    if not entries:
+        click.echo("No search logs found.")
+        return
+
+    if tail > 0:
+        entries = entries[-tail:]
+
+    for entry in entries:
+        ts = (entry.created_at or datetime.now(tz=timezone.utc)).strftime("%H:%M:%S")
+        scope = ""
+        if entry.task_id is not None:
+            scope = f" task={entry.task_id}"
+            if entry.subtask_id is not None:
+                scope += f"/sub={entry.subtask_id}"
+        click.echo(
+            f"[{ts}]{scope} [{entry.engine}] {entry.initiator} → {entry.executor}"
+        )
+        click.echo(f"  Query: {entry.query}")
+        if show_result and entry.result:
+            result_lines = entry.result.splitlines()
+            click.echo(f"  Result: {result_lines[0]}")
+            for line in result_lines[1:]:
+                click.echo(f"          {line}")
+        click.echo("")
+
+
+# ---------------------------------------------------------------------------
 # reply
 # ---------------------------------------------------------------------------
 

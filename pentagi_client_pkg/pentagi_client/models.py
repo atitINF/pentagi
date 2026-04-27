@@ -240,6 +240,97 @@ class AssistantLog:
 
 
 @dataclass
+class TermLog:
+    id: Optional[int]
+    flow_id: Optional[int]
+    task_id: Optional[int]
+    subtask_id: Optional[int]
+    container_id: Optional[int]
+    type: str          # stdin | stdout | stderr
+    text: str
+    created_at: Optional[datetime]
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "TermLog":
+        raw_flow = d.get("flow_id") or d.get("flowId")
+        raw_task = d.get("task_id") or d.get("taskId")
+        raw_sub  = d.get("subtask_id") or d.get("subtaskId")
+        raw_ctr  = d.get("container_id") or d.get("containerId")
+        return cls(
+            id=int(d["id"]) if d.get("id") is not None else None,
+            flow_id=int(raw_flow) if raw_flow is not None else None,
+            task_id=int(raw_task) if raw_task is not None else None,
+            subtask_id=int(raw_sub) if raw_sub is not None else None,
+            container_id=int(raw_ctr) if raw_ctr is not None else None,
+            type=d.get("type", ""),
+            text=d.get("text", ""),
+            created_at=_parse_dt(d.get("created_at") or d.get("createdAt")),
+        )
+
+
+@dataclass
+class SearchLog:
+    id: Optional[int]
+    flow_id: Optional[int]
+    task_id: Optional[int]
+    subtask_id: Optional[int]
+    initiator: str
+    executor: str
+    engine: str
+    query: str
+    result: str
+    created_at: Optional[datetime]
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "SearchLog":
+        raw_flow = d.get("flow_id") or d.get("flowId")
+        raw_task = d.get("task_id") or d.get("taskId")
+        raw_sub  = d.get("subtask_id") or d.get("subtaskId")
+        return cls(
+            id=int(d["id"]) if d.get("id") is not None else None,
+            flow_id=int(raw_flow) if raw_flow is not None else None,
+            task_id=int(raw_task) if raw_task is not None else None,
+            subtask_id=int(raw_sub) if raw_sub is not None else None,
+            initiator=d.get("initiator", ""),
+            executor=d.get("executor", ""),
+            engine=d.get("engine", ""),
+            query=d.get("query", ""),
+            result=d.get("result", ""),
+            created_at=_parse_dt(d.get("created_at") or d.get("createdAt")),
+        )
+
+
+@dataclass
+class Container:
+    id: Optional[int]
+    flow_id: Optional[int]
+    type: str           # primary | secondary
+    name: str
+    image: str
+    status: str         # starting | running | stopped | deleted | failed
+    local_id: str
+    local_dir: str
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Container":
+        raw_flow = d.get("flow_id") or d.get("flowId")
+        return cls(
+            id=int(d["id"]) if d.get("id") is not None else None,
+            flow_id=int(raw_flow) if raw_flow is not None else None,
+            type=d.get("type", ""),
+            name=d.get("name", ""),
+            image=d.get("image", ""),
+            status=d.get("status", ""),
+            local_id=d.get("local_id") or d.get("localId") or "",
+            local_dir=d.get("local_dir") or d.get("localDir") or "",
+            created_at=_parse_dt(d.get("created_at") or d.get("createdAt")),
+            updated_at=_parse_dt(d.get("updated_at") or d.get("updatedAt")),
+        )
+
+
+@dataclass
 class AgentLog:
     id: Optional[int]
     flow_id: Optional[int]

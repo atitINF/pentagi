@@ -8,7 +8,7 @@ import requests as _requests
 from .config import Config
 from .exceptions import APIError, AuthError
 from .exceptions import ConnectionError as PentAGIConnectionError
-from .models import AgentLog, Assistant, AssistantLog, Flow, MessageLog, Subtask, Task
+from .models import AgentLog, Assistant, AssistantLog, Container, Flow, MessageLog, SearchLog, Subtask, Task, TermLog
 from .streaming import AssistantStreamingManager, StreamingManager
 
 
@@ -41,6 +41,16 @@ class PentAGIClient:
         url = self._cfg.rest_base + path
         try:
             resp = self._session.post(url, json=json, timeout=30)
+        except _requests.ConnectionError as exc:
+            raise PentAGIConnectionError(str(exc)) from exc
+        except _requests.Timeout as exc:
+            raise PentAGIConnectionError("Request timed out") from exc
+        return self._handle(resp)
+
+    def _delete(self, path: str) -> dict:
+        url = self._cfg.rest_base + path
+        try:
+            resp = self._session.delete(url, timeout=30)
         except _requests.ConnectionError as exc:
             raise PentAGIConnectionError(str(exc)) from exc
         except _requests.Timeout as exc:
@@ -128,6 +138,60 @@ class PentAGIClient:
             if exc.status_code < 500:
                 return
             raise
+
+    def delete_flow(self, flow_id: int) -> None:
+        self._delete(f"/flows/{flow_id}")
+
+    # ------------------------------------------------------------------
+    # Containers
+    # ------------------------------------------------------------------
+
+    def get_containers(self, flow_id: int) -> List[Container]:
+        data = self._get(f"/flows/{flow_id}/containers/", page=1, type="init", pageSize=-1)
+        items = data.get("containers") or (data if isinstance(data, list) else [])
+        return [Container.from_dict(c) for c in items]
+
+    # ------------------------------------------------------------------
+    # Terminal logs
+    # ------------------------------------------------------------------
+
+    def get_term_logs(
+        self,
+        flow_id: int,
+        types: Optional[List[str]] = None,
+        task_id: Optional[int] = None,
+        subtask_id: Optional[int] = None,
+    ) -> List[TermLog]:
+        data = self._get(f"/flows/{flow_id}/termlogs/", page=1, type="init", pageSize=-1)
+        items = data.get("termlogs") or (data if isinstance(data, list) else [])
+        logs = [TermLog.from_dict(i) for i in items]
+        if types:
+            allowed = set(types)
+            logs = [l for l in logs if l.type in allowed]
+        if task_id is not None:
+            logs = [l for l in logs if l.task_id == task_id]
+        if subtask_id is not None:
+            logs = [l for l in logs if l.subtask_id == subtask_id]
+        return logs
+
+    # ------------------------------------------------------------------
+    # Search logs
+    # ------------------------------------------------------------------
+
+    def get_search_logs(
+        self,
+        flow_id: int,
+        task_id: Optional[int] = None,
+        subtask_id: Optional[int] = None,
+    ) -> List[SearchLog]:
+        data = self._get(f"/flows/{flow_id}/searchlogs/", page=1, type="init", pageSize=-1)
+        items = data.get("searchlogs") or (data if isinstance(data, list) else [])
+        logs = [SearchLog.from_dict(i) for i in items]
+        if task_id is not None:
+            logs = [l for l in logs if l.task_id == task_id]
+        if subtask_id is not None:
+            logs = [l for l in logs if l.subtask_id == subtask_id]
+        return logs
 
     # ------------------------------------------------------------------
     # Task / Subtask operations
