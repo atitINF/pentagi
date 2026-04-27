@@ -1,0 +1,17 @@
+{
+  "containers": [
+    {
+      "id": 8,
+      "type": "primary",
+      "name": "pentagi-terminal-9",
+      "image": "vxcontrol/kali-linux:latest",
+      "status": "running",
+      "local_id": "4591359c32eb097bc3ac9d822da1b56d372f9a2b147b076573e538f3d2787e5a",
+      "local_dir": "/var/lib/kubelet/pods/33e3c3d5-05f6-49d5-9af2-90ef579d922d/volumes/kubernetes.io~empty-dir/shared-data/flow-9",
+      "flow_id": 9,
+      "created_at": "2026-04-23T09:43:39.102745Z",
+      "updated_at": "2026-04-23T09:43:39.362335Z"
+    }
+  ],
+  "total": 1
+}

@@ -1,0 +1,337 @@
+{
+  "usage_stats_total": {
+    "total_usage_in": 6029640,
+    "total_usage_out": 272073,
+    "total_usage_cache_in": 2078672,
+    "total_usage_cache_out": 30203,
+    "total_usage_cost_in": 3.0710241,
+    "total_usage_cost_out": 1.199007
+  },
+  "toolcalls_stats_total": {
+    "total_count": 455,
+    "total_duration_seconds": 13599.052447905013
+  },
+  "flows_stats_total": {
+    "total_flows_count": 9,
+    "total_tasks_count": 9,
+    "total_subtasks_count": 61,
+    "total_assistants_count": 7
+  },
+  "usage_stats_by_provider": [
+    {
+      "provider": "gemini",
+      "stats": {
+        "total_usage_in": 6029640,
+        "total_usage_out": 272073,
+        "total_usage_cache_in": 2078672,
+        "total_usage_cache_out": 30203,
+        "total_usage_cost_in": 3.0710241,
+        "total_usage_cost_out": 1.199007
+      }
+    }
+  ],
+  "usage_stats_by_model": [
+    {
+      "model": "gemini-3.1-flash-lite-preview",
+      "provider": "gemini",
+      "stats": {
+        "total_usage_in": 1498110,
+        "total_usage_out": 130704,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.37452750000000007,
+        "total_usage_cost_out": 0.196056
+      }
+    },
+    {
+      "model": "gemini-3.1-pro-preview",
+      "provider": "gemini",
+      "stats": {
+        "total_usage_in": 909816,
+        "total_usage_out": 64316,
+        "total_usage_cache_in": 56350,
+        "total_usage_cache_out": 21522,
+        "total_usage_cost_in": 1.7878580000000004,
+        "total_usage_cost_out": 0.771792
+      }
+    },
+    {
+      "model": "gemini-3-flash-preview",
+      "provider": "gemini",
+      "stats": {
+        "total_usage_in": 3621714,
+        "total_usage_out": 77053,
+        "total_usage_cache_in": 2022322,
+        "total_usage_cache_out": 8681,
+        "total_usage_cost_in": 0.9086385999999997,
+        "total_usage_cost_out": 0.23115899999999998
+      }
+    }
+  ],
+  "usage_stats_by_agent_type": [
+    {
+      "agent_type": "primary_agent",
+      "stats": {
+        "total_usage_in": 380048,
+        "total_usage_out": 40973,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.760096,
+        "total_usage_cost_out": 0.491676
+      }
+    },
+    {
+      "agent_type": "reporter",
+      "stats": {
+        "total_usage_in": 44729,
+        "total_usage_out": 3280,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.01118225,
+        "total_usage_cost_out": 0.00492
+      }
+    },
+    {
+      "agent_type": "generator",
+      "stats": {
+        "total_usage_in": 42450,
+        "total_usage_out": 6849,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.08490000000000002,
+        "total_usage_cost_out": 0.082188
+      }
+    },
+    {
+      "agent_type": "refiner",
+      "stats": {
+        "total_usage_in": 308807,
+        "total_usage_out": 5006,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.6176140000000001,
+        "total_usage_cost_out": 0.06007199999999999
+      }
+    },
+    {
+      "agent_type": "reflector",
+      "stats": {
+        "total_usage_in": 17351,
+        "total_usage_out": 563,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.0086755,
+        "total_usage_cost_out": 0.001689
+      }
+    },
+    {
+      "agent_type": "coder",
+      "stats": {
+        "total_usage_in": 3904,
+        "total_usage_out": 1341,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.007808,
+        "total_usage_cost_out": 0.016092
+      }
+    },
+    {
+      "agent_type": "memorist",
+      "stats": {
+        "total_usage_in": 235855,
+        "total_usage_out": 3993,
+        "total_usage_cache_in": 135642,
+        "total_usage_cache_out": 8681,
+        "total_usage_cost_in": 0.0647151,
+        "total_usage_cost_out": 0.011979
+      }
+    },
+    {
+      "agent_type": "searcher",
+      "stats": {
+        "total_usage_in": 56529,
+        "total_usage_out": 2809,
+        "total_usage_cache_in": 24175,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.01738575,
+        "total_usage_cost_out": 0.008427
+      }
+    },
+    {
+      "agent_type": "installer",
+      "stats": {
+        "total_usage_in": 101061,
+        "total_usage_out": 4227,
+        "total_usage_cache_in": 34111,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.035180550000000005,
+        "total_usage_cost_out": 0.012681000000000001
+      }
+    },
+    {
+      "agent_type": "pentester",
+      "stats": {
+        "total_usage_in": 3210918,
+        "total_usage_out": 65461,
+        "total_usage_cache_in": 1828394,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.7826816999999999,
+        "total_usage_cost_out": 0.196383
+      }
+    },
+    {
+      "agent_type": "summarizer",
+      "stats": {
+        "total_usage_in": 1452184,
+        "total_usage_out": 127302,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.36304600000000004,
+        "total_usage_cost_out": 0.19095300000000004
+      }
+    },
+    {
+      "agent_type": "tool_call_fixer",
+      "stats": {
+        "total_usage_in": 1197,
+        "total_usage_out": 122,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.00029925,
+        "total_usage_cost_out": 0.000183
+      }
+    },
+    {
+      "agent_type": "assistant",
+      "stats": {
+        "total_usage_in": 174607,
+        "total_usage_out": 10147,
+        "total_usage_cache_in": 56350,
+        "total_usage_cache_out": 21522,
+        "total_usage_cost_in": 0.31744,
+        "total_usage_cost_out": 0.12176400000000001
+      }
+    }
+  ],
+  "toolcalls_stats_by_function": [
+    {
+      "function_name": "pentester",
+      "is_agent": true,
+      "total_count": 31,
+      "total_duration_seconds": 6932.533652750998,
+      "avg_duration_seconds": 223.63011783067736
+    },
+    {
+      "function_name": "terminal",
+      "is_agent": false,
+      "total_count": 284,
+      "total_duration_seconds": 5751.451182560998,
+      "avg_duration_seconds": 20.25158867098943
+    },
+    {
+      "function_name": "search",
+      "is_agent": true,
+      "total_count": 2,
+      "total_duration_seconds": 415.42662880200004,
+      "avg_duration_seconds": 207.71331440100002
+    },
+    {
+      "function_name": "memorist",
+      "is_agent": true,
+      "total_count": 4,
+      "total_duration_seconds": 399.11388038100006,
+      "avg_duration_seconds": 99.77847009525001
+    },
+    {
+      "function_name": "maintenance",
+      "is_agent": true,
+      "total_count": 3,
+      "total_duration_seconds": 71.83687641899999,
+      "avg_duration_seconds": 23.945625472999996
+    },
+    {
+      "function_name": "coder",
+      "is_agent": true,
+      "total_count": 1,
+      "total_duration_seconds": 23.997138795,
+      "avg_duration_seconds": 23.997138795
+    },
+    {
+      "function_name": "duckduckgo",
+      "is_agent": false,
+      "total_count": 4,
+      "total_duration_seconds": 4.1872724990000005,
+      "avg_duration_seconds": 1.0468181247500001
+    },
+    {
+      "function_name": "done",
+      "is_agent": false,
+      "total_count": 32,
+      "total_duration_seconds": 0.18354498000000002,
+      "avg_duration_seconds": 0.005735780625000001
+    },
+    {
+      "function_name": "file",
+      "is_agent": false,
+      "total_count": 9,
+      "total_duration_seconds": 0.09841471800000001,
+      "avg_duration_seconds": 0.010934968666666668
+    },
+    {
+      "function_name": "subtask_patch",
+      "is_agent": true,
+      "total_count": 31,
+      "total_duration_seconds": 0.080942991,
+      "avg_duration_seconds": 0.002611064225806452
+    },
+    {
+      "function_name": "hack_result",
+      "is_agent": true,
+      "total_count": 31,
+      "total_duration_seconds": 0.06904919,
+      "avg_duration_seconds": 0.0022273932258064515
+    },
+    {
+      "function_name": "subtask_list",
+      "is_agent": true,
+      "total_count": 9,
+      "total_duration_seconds": 0.046734099,
+      "avg_duration_seconds": 0.005192677666666667
+    },
+    {
+      "function_name": "report_result",
+      "is_agent": true,
+      "total_count": 4,
+      "total_duration_seconds": 0.008046320000000001,
+      "avg_duration_seconds": 0.0020115800000000002
+    },
+    {
+      "function_name": "maintenance_result",
+      "is_agent": true,
+      "total_count": 3,
+      "total_duration_seconds": 0.006241731,
+      "avg_duration_seconds": 0.002080577
+    },
+    {
+      "function_name": "memorist_result",
+      "is_agent": true,
+      "total_count": 4,
+      "total_duration_seconds": 0.005782171,
+      "avg_duration_seconds": 0.00144554275
+    },
+    {
+      "function_name": "search_result",
+      "is_agent": true,
+      "total_count": 2,
+      "total_duration_seconds": 0.004171797,
+      "avg_duration_seconds": 0.0020858985
+    },
+    {
+      "function_name": "code_result",
+      "is_agent": true,
+      "total_count": 1,
+      "total_duration_seconds": 0.0028877,
+      "avg_duration_seconds": 0.0028877
+    }
+  ]
+}

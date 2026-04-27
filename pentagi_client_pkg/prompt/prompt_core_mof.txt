@@ -1,0 +1,99 @@
+Your task is to perform a comprehensive
+  penetration test against the following target:                                                                                           
+                                                            
+  TARGET: https://misp-core.mof.go.th/ 
+                                                            
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                                                                               
+  SCOPE & METHODOLOGY                                       
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                                                                               
+                                                                                                                                           
+  Test the target against all applicable OWASP Top 10 (2021) categories:                                                                   
+                                                                                                                                           
+    A01 - Broken Access Control                                                                                                            
+    A02 - Cryptographic Failures                            
+    A03 - Injection (SQLi, XSS, Command Injection, SSTI, LDAP, etc.)                                                                       
+    A04 - Insecure Design                                                                                                                  
+    A05 - Security Misconfiguration                                                                                                        
+    A06 - Vulnerable and Outdated Components                                                                                               
+    A07 - Identification and Authentication Failures                                                                                       
+    A08 - Software and Data Integrity Failures              
+    A09 - Security Logging and Monitoring Failures                                                                                         
+    A10 - Server-Side Request Forgery (SSRF)
+                                                                                                                                           
+  For each category:                                        
+  1. Enumerate all relevant attack surfaces (endpoints, parameters, headers, cookies)                                                      
+  2. Actively test using appropriate tools and techniques                                                                                  
+  3. Confirm findings with proof-of-concept requests where safe to do so
+  4. Record the exact HTTP request and response for every confirmed finding                                                                
+                                                            
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  TRACKING
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                                                                                                                                           
+  As you work, maintain an internal list of all confirmed findings. For each                                                               
+  finding record:                                                                                                                          
+  - The exact vulnerable endpoint (full URL + path)                                                                                        
+  - The OWASP category it belongs to (e.g. A03)             
+  - Severity: Critical | High | Medium | Low | Informational                                                                               
+  - The tool or technique used to discover it                                                                                              
+  - The HTTP request that triggered it                                                                                                     
+  - The HTTP response that confirmed it                                                                                                    
+  - A CVE or advisory reference if one exists                                                                                              
+   
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                                                                               
+  FINAL SUBTASK — JSON Output                               
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━                                                                                               
+                                                            
+  When all testing is complete, your final subtask MUST be named exactly:                                                                  
+  "JSON Output"                                             
+                                                                                                                                           
+  In this subtask, print ONLY a valid JSON array containing all confirmed                                                                  
+  findings. Use this exact schema for each finding — do not add or remove fields:                                                          
+                                                                                                                                           
+  [                                                         
+    {                                                                                                                                      
+      "domain": "<root domain of target, e.g. example.com>",
+      "asset_id": "asset_<sha1-of-full-url>",                                                                                              
+      "tool_name": "<tool that found it, e.g. nuclei, nmap, manual>",                                                                      
+      "issue_name": "<short vulnerability name>",                                                                                          
+      "created_at": "<ISO8601 timestamp of discovery>",                                                                                    
+      "updated_at": "<ISO8601 timestamp of discovery>",                                                                                    
+      "affected_object": [                                  
+        {                                                                                                                                  
+          "object": "<full URL of affected endpoint>",      
+          "affected_path": "<path portion only>"
+        }                                                                                                                                  
+      ],
+      "category": "vulnerability_intelligence",                                                                                            
+      "severity": "<Critical|High|Medium|Low|Informational>",
+      "description": "<what the vulnerability is and why it is dangerous>",                                                                
+      "remediation": "<specific steps to fix it>",
+      "reference": [                                                                                                                       
+        "<CVE link or advisory URL>",                       
+        "<OWASP reference URL>"                                                                                                            
+      ],                                                                                                                                   
+      "tags": ["<owasp-aXX>", "<vulnerability-type>"],
+      "technical_details": [                                                                                                               
+        {                                                                                                                                  
+          "technical_detail": "<markdown summary: what was tested, what was found, impact>",
+          "raw_json_data": {},                                                                                                             
+          "request": "<full HTTP request that triggered the finding>",
+          "response": "<full HTTP response that confirmed the finding>",                                                                   
+          "tool_name": "pentagi",                           
+          "display_name": "AI Penetration Test",                                                                                           
+          "scanner_tier": "3",
+          "event_id": "<unique identifier for this finding event>"                                                                         
+        }                                                                                                                                  
+      ]
+    }                                                                                                                                      
+  ]                                                         
+
+  Rules for the JSON Output subtask:                                                                                                       
+  - Output the raw JSON array only — no surrounding text, no markdown code fences
+  - If no findings were confirmed, output an empty array: []                                                                               
+  - Every confirmed finding gets its own object in the array                                                                               
+  - If a single vulnerability affects multiple endpoints, create one object per                                                            
+    endpoint (separate affected_object entries are acceptable for the same issue)                                                          
+  - Severity must use exactly one of: Critical, High, Medium, Low, Informational                                                           
+  - Tags must include the OWASP category tag (e.g. "owasp-a03") and a                                                                      
+    short vulnerability type tag (e.g. "sqli", "xss", "ssrf")   

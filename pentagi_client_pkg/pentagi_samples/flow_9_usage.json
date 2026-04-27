@@ -1,0 +1,207 @@
+{
+  "flow_id": 9,
+  "usage_stats_by_flow": {
+    "total_usage_in": 1170507,
+    "total_usage_out": 64420,
+    "total_usage_cache_in": 298540,
+    "total_usage_cache_out": 0,
+    "total_usage_cost_in": 0.6605002499999998,
+    "total_usage_cost_out": 0.26722949999999995
+  },
+  "usage_stats_by_agent_type_for_flow": [
+    {
+      "agent_type": "primary_agent",
+      "stats": {
+        "total_usage_in": 105607,
+        "total_usage_out": 10962,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.21121399999999999,
+        "total_usage_cost_out": 0.13154400000000002
+      }
+    },
+    {
+      "agent_type": "reporter",
+      "stats": {
+        "total_usage_in": 10103,
+        "total_usage_out": 504,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.00252575,
+        "total_usage_cost_out": 0.000756
+      }
+    },
+    {
+      "agent_type": "generator",
+      "stats": {
+        "total_usage_in": 4464,
+        "total_usage_out": 859,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.008928,
+        "total_usage_cost_out": 0.010308
+      }
+    },
+    {
+      "agent_type": "refiner",
+      "stats": {
+        "total_usage_in": 89832,
+        "total_usage_out": 957,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.179664,
+        "total_usage_cost_out": 0.011483999999999998
+      }
+    },
+    {
+      "agent_type": "coder",
+      "stats": {
+        "total_usage_in": 3904,
+        "total_usage_out": 1341,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.007808,
+        "total_usage_cost_out": 0.016092
+      }
+    },
+    {
+      "agent_type": "installer",
+      "stats": {
+        "total_usage_in": 101061,
+        "total_usage_out": 4227,
+        "total_usage_cache_in": 34111,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.035180550000000005,
+        "total_usage_cost_out": 0.012681000000000001
+      }
+    },
+    {
+      "agent_type": "pentester",
+      "stats": {
+        "total_usage_in": 481156,
+        "total_usage_out": 10673,
+        "total_usage_cache_in": 264429,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.12158495,
+        "total_usage_cost_out": 0.032019
+      }
+    },
+    {
+      "agent_type": "summarizer",
+      "stats": {
+        "total_usage_in": 373183,
+        "total_usage_out": 34775,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.09329574999999998,
+        "total_usage_cost_out": 0.052162500000000014
+      }
+    },
+    {
+      "agent_type": "tool_call_fixer",
+      "stats": {
+        "total_usage_in": 1197,
+        "total_usage_out": 122,
+        "total_usage_cache_in": 0,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 0.00029925,
+        "total_usage_cost_out": 0.000183
+      }
+    }
+  ],
+  "toolcalls_stats_by_flow": {
+    "total_count": 90,
+    "total_duration_seconds": 2007.9934665409996
+  },
+  "toolcalls_stats_by_function_for_flow": [
+    {
+      "function_name": "pentester",
+      "is_agent": true,
+      "total_count": 6,
+      "total_duration_seconds": 1084.097102556,
+      "avg_duration_seconds": 180.682850426
+    },
+    {
+      "function_name": "terminal",
+      "is_agent": false,
+      "total_count": 47,
+      "total_duration_seconds": 827.918761033,
+      "avg_duration_seconds": 17.61529278793617
+    },
+    {
+      "function_name": "maintenance",
+      "is_agent": true,
+      "total_count": 3,
+      "total_duration_seconds": 71.83687641899999,
+      "avg_duration_seconds": 23.945625472999996
+    },
+    {
+      "function_name": "coder",
+      "is_agent": true,
+      "total_count": 1,
+      "total_duration_seconds": 23.997138795,
+      "avg_duration_seconds": 23.997138795
+    },
+    {
+      "function_name": "done",
+      "is_agent": false,
+      "total_count": 8,
+      "total_duration_seconds": 0.047066457,
+      "avg_duration_seconds": 0.005883307125
+    },
+    {
+      "function_name": "file",
+      "is_agent": false,
+      "total_count": 4,
+      "total_duration_seconds": 0.046174551,
+      "avg_duration_seconds": 0.01154363775
+    },
+    {
+      "function_name": "subtask_patch",
+      "is_agent": true,
+      "total_count": 9,
+      "total_duration_seconds": 0.019561535,
+      "avg_duration_seconds": 0.002173503888888889
+    },
+    {
+      "function_name": "hack_result",
+      "is_agent": true,
+      "total_count": 6,
+      "total_duration_seconds": 0.014900992,
+      "avg_duration_seconds": 0.0024834986666666665
+    },
+    {
+      "function_name": "maintenance_result",
+      "is_agent": true,
+      "total_count": 3,
+      "total_duration_seconds": 0.006241731,
+      "avg_duration_seconds": 0.002080577
+    },
+    {
+      "function_name": "subtask_list",
+      "is_agent": true,
+      "total_count": 1,
+      "total_duration_seconds": 0.005133797,
+      "avg_duration_seconds": 0.005133797
+    },
+    {
+      "function_name": "code_result",
+      "is_agent": true,
+      "total_count": 1,
+      "total_duration_seconds": 0.0028877,
+      "avg_duration_seconds": 0.0028877
+    },
+    {
+      "function_name": "report_result",
+      "is_agent": true,
+      "total_count": 1,
+      "total_duration_seconds": 0.001620975,
+      "avg_duration_seconds": 0.001620975
+    }
+  ],
+  "flow_stats_by_flow": {
+    "total_tasks_count": 1,
+    "total_subtasks_count": 8,
+    "total_assistants_count": 0
+  }
+}

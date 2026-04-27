@@ -1,0 +1,602 @@
+{
+  "period": "quarter",
+  "usage_stats_by_period": [
+    {
+      "date": "2026-04-27T00:00:00Z",
+      "stats": {
+        "total_usage_in": 164302,
+        "total_usage_out": 10648,
+        "total_usage_cache_in": 56350,
+        "total_usage_cache_out": 21522,
+        "total_usage_cost_in": 0.2388035,
+        "total_usage_cost_out": 0.099363
+      }
+    },
+    {
+      "date": "2026-04-23T00:00:00Z",
+      "stats": {
+        "total_usage_in": 2515716,
+        "total_usage_out": 102570,
+        "total_usage_cache_in": 911180,
+        "total_usage_cache_out": 0,
+        "total_usage_cost_in": 1.1346634999999996,
+        "total_usage_cost_out": 0.4186694999999998
+      }
+    },
+    {
+      "date": "2026-04-22T00:00:00Z",
+      "stats": {
+        "total_usage_in": 3349622,
+        "total_usage_out": 158855,
+        "total_usage_cache_in": 1111142,
+        "total_usage_cache_out": 8681,
+        "total_usage_cost_in": 1.6975571000000012,
+        "total_usage_cost_out": 0.6809744999999998
+      }
+    }
+  ],
+  "toolcalls_stats_by_period": [
+    {
+      "date": "2026-04-27T00:00:00Z",
+      "stats": {
+        "total_count": 10,
+        "total_duration_seconds": 166.99231022099997
+      }
+    },
+    {
+      "date": "2026-04-23T00:00:00Z",
+      "stats": {
+        "total_count": 178,
+        "total_duration_seconds": 6126.461239981995
+      }
+    },
+    {
+      "date": "2026-04-22T00:00:00Z",
+      "stats": {
+        "total_count": 267,
+        "total_duration_seconds": 7305.598897702
+      }
+    }
+  ],
+  "flows_stats_by_period": [
+    {
+      "date": "2026-04-23T00:00:00Z",
+      "stats": {
+        "total_flows_count": 2,
+        "total_tasks_count": 2,
+        "total_subtasks_count": 13,
+        "total_assistants_count": 1
+      }
+    },
+    {
+      "date": "2026-04-22T00:00:00Z",
+      "stats": {
+        "total_flows_count": 7,
+        "total_tasks_count": 7,
+        "total_subtasks_count": 48,
+        "total_assistants_count": 6
+      }
+    }
+  ],
+  "flows_execution_stats_by_period": [
+    {
+      "flow_id": 10,
+      "flow_title": "Pentest MISP Core",
+      "total_duration_seconds": 2326.3380730000003,
+      "total_toolcalls_count": 96,
+      "total_assistants_count": 1,
+      "tasks": [
+        {
+          "task_id": 9,
+          "task_title": "Comprehensive OWASP Top 10 Penetration Test for misp-core.mof.go.th",
+          "total_duration_seconds": 2326.3380730000003,
+          "total_toolcalls_count": 88,
+          "subtasks": [
+            {
+              "subtask_id": 124,
+              "subtask_title": "Educational Reconnaissance Methodology",
+              "total_duration_seconds": 16.107705,
+              "total_toolcalls_count": 1
+            },
+            {
+              "subtask_id": 128,
+              "subtask_title": "Reconnaissance and Discovery",
+              "total_duration_seconds": 217.988665,
+              "total_toolcalls_count": 26
+            },
+            {
+              "subtask_id": 140,
+              "subtask_title": "Automated Vulnerability Scanning",
+              "total_duration_seconds": 1853.056724,
+              "total_toolcalls_count": 23
+            },
+            {
+              "subtask_id": 161,
+              "subtask_title": "Manual OWASP Testing and Verification",
+              "total_duration_seconds": 196.089583,
+              "total_toolcalls_count": 30
+            },
+            {
+              "subtask_id": 163,
+              "subtask_title": "JSON Output",
+              "total_duration_seconds": 43.095396,
+              "total_toolcalls_count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 9,
+      "flow_title": "OWASP Penetration Test",
+      "total_duration_seconds": 1433.71193,
+      "total_toolcalls_count": 90,
+      "total_assistants_count": 0,
+      "tasks": [
+        {
+          "task_id": 8,
+          "task_title": "Comprehensive OWASP Top 10 Penetration Test for misp-agency.mof.go.th",
+          "total_duration_seconds": 1433.71193,
+          "total_toolcalls_count": 90,
+          "subtasks": [
+            {
+              "subtask_id": 115,
+              "subtask_title": "Reconnaissance and Web Profiling",
+              "total_duration_seconds": 79.634236,
+              "total_toolcalls_count": 7
+            },
+            {
+              "subtask_id": 132,
+              "subtask_title": "Service and Port Scanning",
+              "total_duration_seconds": 196.741896,
+              "total_toolcalls_count": 18
+            },
+            {
+              "subtask_id": 143,
+              "subtask_title": "Directory and Endpoint Enumeration",
+              "total_duration_seconds": 424.415948,
+              "total_toolcalls_count": 16
+            },
+            {
+              "subtask_id": 150,
+              "subtask_title": "Automated Vulnerability Scanning",
+              "total_duration_seconds": 429.388442,
+              "total_toolcalls_count": 16
+            },
+            {
+              "subtask_id": 154,
+              "subtask_title": "Active Testing: Login Portal and Unauthenticated Vectors",
+              "total_duration_seconds": 107.515427,
+              "total_toolcalls_count": 9
+            },
+            {
+              "subtask_id": 157,
+              "subtask_title": "Evidence Consolidation and JSON Preparation",
+              "total_duration_seconds": 72.491012,
+              "total_toolcalls_count": 8
+            },
+            {
+              "subtask_id": 159,
+              "subtask_title": "JSON Output",
+              "total_duration_seconds": 59.100091,
+              "total_toolcalls_count": 4
+            },
+            {
+              "subtask_id": 160,
+              "subtask_title": "JSON Output",
+              "total_duration_seconds": 64.424878,
+              "total_toolcalls_count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 8,
+      "flow_title": "OWASP Pen Test: 13.212.197.157",
+      "total_duration_seconds": 1032.552727,
+      "total_toolcalls_count": 50,
+      "total_assistants_count": 1,
+      "tasks": [
+        {
+          "task_id": 7,
+          "task_title": "Comprehensive OWASP Top 10 2021 Penetration Test for 13.212.197.157",
+          "total_duration_seconds": 1032.552727,
+          "total_toolcalls_count": 48,
+          "subtasks": [
+            {
+              "subtask_id": 91,
+              "subtask_title": "Initial Target Profiling & Fingerprinting",
+              "total_duration_seconds": 311.556878,
+              "total_toolcalls_count": 12
+            },
+            {
+              "subtask_id": 100,
+              "subtask_title": "Automated Vulnerability Scanning & Directory Bruteforcing",
+              "total_duration_seconds": 407.323071,
+              "total_toolcalls_count": 7
+            },
+            {
+              "subtask_id": 106,
+              "subtask_title": "Targeted Dynamic Testing for Injection Flaws (A03)",
+              "total_duration_seconds": 107.54948,
+              "total_toolcalls_count": 7
+            },
+            {
+              "subtask_id": 111,
+              "subtask_title": "Complete Remaining Web Vulnerability Assessment (A01, A02, A04-A10)",
+              "total_duration_seconds": 111.643409,
+              "total_toolcalls_count": 14
+            },
+            {
+              "subtask_id": 114,
+              "subtask_title": "JSON Output",
+              "total_duration_seconds": 94.479889,
+              "total_toolcalls_count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 7,
+      "flow_title": "OWASP Penetration Test",
+      "total_duration_seconds": 91260.65840300001,
+      "total_toolcalls_count": 61,
+      "total_assistants_count": 4,
+      "tasks": [
+        {
+          "task_id": 6,
+          "task_title": "Comprehensive OWASP Top 10 2021 Penetration Test for 13.212.197.157",
+          "total_duration_seconds": 91260.65840300001,
+          "total_toolcalls_count": 50,
+          "subtasks": [
+            {
+              "subtask_id": 72,
+              "subtask_title": "Target Reconnaissance and Endpoint Enumeration",
+              "total_duration_seconds": 471.237123,
+              "total_toolcalls_count": 12
+            },
+            {
+              "subtask_id": 79,
+              "subtask_title": "Automated Vulnerability Assessment",
+              "total_duration_seconds": 1342.318763,
+              "total_toolcalls_count": 13
+            },
+            {
+              "subtask_id": 84,
+              "subtask_title": "Active Testing: Injection Vulnerabilities (A03)",
+              "total_duration_seconds": 312.709294,
+              "total_toolcalls_count": 14
+            },
+            {
+              "subtask_id": 88,
+              "subtask_title": "Active Testing: Broken Access Control (A01) & Misconfigurations (A05)",
+              "total_duration_seconds": 89134.393223,
+              "total_toolcalls_count": 7
+            },
+            {
+              "subtask_id": 89,
+              "subtask_title": "Findings Aggregation and Preparation",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 90,
+              "subtask_title": "JSON Output",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 6,
+      "flow_title": "OWASP Penetration Test",
+      "total_duration_seconds": 92823.251791,
+      "total_toolcalls_count": 23,
+      "total_assistants_count": 0,
+      "tasks": [
+        {
+          "task_id": 5,
+          "task_title": "Comprehensive OWASP Top 10 Penetration Test for 13.212.197.157",
+          "total_duration_seconds": 92823.251791,
+          "total_toolcalls_count": 23,
+          "subtasks": [
+            {
+              "subtask_id": 46,
+              "subtask_title": "Initial Reconnaissance and Tech Stack Identification",
+              "total_duration_seconds": 575.729456,
+              "total_toolcalls_count": 10
+            },
+            {
+              "subtask_id": 61,
+              "subtask_title": "Directory Bruteforcing and Attack Surface Mapping",
+              "total_duration_seconds": 140.428227,
+              "total_toolcalls_count": 10
+            },
+            {
+              "subtask_id": 67,
+              "subtask_title": "Automated Vulnerability Scanning",
+              "total_duration_seconds": 92107.094108,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 68,
+              "subtask_title": "Active Testing - Exploitation of Known Endpoints (Injection, SSRF, Path Traversal)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 69,
+              "subtask_title": "Active Testing - Remaining OWASP Categories",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 70,
+              "subtask_title": "Findings Consolidation and JSON Formatting",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 71,
+              "subtask_title": "JSON Output",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 5,
+      "flow_title": "OWASP Security Audit",
+      "total_duration_seconds": 1649.110827,
+      "total_toolcalls_count": 55,
+      "total_assistants_count": 0,
+      "tasks": [
+        {
+          "task_id": 4,
+          "task_title": "Comprehensive OWASP Top 10 2025 Security Assessment for 13.212.197.157",
+          "total_duration_seconds": 1649.110827,
+          "total_toolcalls_count": 55,
+          "subtasks": [
+            {
+              "subtask_id": 38,
+              "subtask_title": "Reconnaissance and Component Fingerprinting",
+              "total_duration_seconds": 1098.603351,
+              "total_toolcalls_count": 40
+            },
+            {
+              "subtask_id": 54,
+              "subtask_title": "Endpoint Discovery and Misconfiguration Check",
+              "total_duration_seconds": 550.507476,
+              "total_toolcalls_count": 13
+            },
+            {
+              "subtask_id": 55,
+              "subtask_title": "Authentication and Cryptography Assessment",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 56,
+              "subtask_title": "Access Control and Insecure Design Evaluation",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 57,
+              "subtask_title": "Comprehensive Injection Testing",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 58,
+              "subtask_title": "SSRF and Integrity Verification",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 59,
+              "subtask_title": "Logging and Monitoring Evaluation",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 60,
+              "subtask_title": "Generate JSON Findings Report",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 4,
+      "flow_title": "OWASP Security Audit",
+      "total_duration_seconds": 330.335501,
+      "total_toolcalls_count": 4,
+      "total_assistants_count": 0,
+      "tasks": [
+        {
+          "task_id": 3,
+          "task_title": "Comprehensive Security Assessment and OWASP Top 10 2025 Penetration Test for 13.212.197.157",
+          "total_duration_seconds": 330.335501,
+          "total_toolcalls_count": 4,
+          "subtasks": [
+            {
+              "subtask_id": 30,
+              "subtask_title": "Initial Reconnaissance and Web Fingerprinting (OWASP A02, A05, A06)",
+              "total_duration_seconds": 330.335501,
+              "total_toolcalls_count": 3
+            },
+            {
+              "subtask_id": 31,
+              "subtask_title": "Directory and Endpoint Enumeration (OWASP A05)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 32,
+              "subtask_title": "Application Mapping and Attack Surface Discovery",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 33,
+              "subtask_title": "Authentication, Session, and Logging Testing (OWASP A07, A09, A04)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 34,
+              "subtask_title": "Access Control and Insecure Design Assessment (OWASP A01, A04)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 35,
+              "subtask_title": "Comprehensive Injection Testing (OWASP A03)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 36,
+              "subtask_title": "SSRF and Data Integrity Testing (OWASP A10, A08)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 37,
+              "subtask_title": "Vulnerability Verification and JSON Findings Generation",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 3,
+      "flow_title": "Full OWASP Security Audit",
+      "total_duration_seconds": 736.061904,
+      "total_toolcalls_count": 59,
+      "total_assistants_count": 1,
+      "tasks": [
+        {
+          "task_id": 2,
+          "task_title": "Comprehensive OWASP Top 10 2025 Security Assessment of 13.212.197.157",
+          "total_duration_seconds": 736.061904,
+          "total_toolcalls_count": 59,
+          "subtasks": [
+            {
+              "subtask_id": 9,
+              "subtask_title": "Subtask 1: Initial Reconnaissance and Tech Fingerprinting",
+              "total_duration_seconds": 138.278888,
+              "total_toolcalls_count": 10
+            },
+            {
+              "subtask_id": 15,
+              "subtask_title": "Subtask 2: Directory and Endpoint Enumeration",
+              "total_duration_seconds": 97.353548,
+              "total_toolcalls_count": 6
+            },
+            {
+              "subtask_id": 20,
+              "subtask_title": "Subtask 3: Authentication, Access Control, and Design Testing",
+              "total_duration_seconds": 155.932499,
+              "total_toolcalls_count": 13
+            },
+            {
+              "subtask_id": 24,
+              "subtask_title": "Subtask 4: Injection, SSRF, and Vulnerability Exploitation",
+              "total_duration_seconds": 115.727441,
+              "total_toolcalls_count": 15
+            },
+            {
+              "subtask_id": 27,
+              "subtask_title": "Subtask 5: Logging Assessment (A09) via LFI and Findings Consolidation",
+              "total_duration_seconds": 109.054164,
+              "total_toolcalls_count": 6
+            },
+            {
+              "subtask_id": 29,
+              "subtask_title": "Subtask 6: Synthesis and JSON Report Generation",
+              "total_duration_seconds": 119.715364,
+              "total_toolcalls_count": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "flow_id": 2,
+      "flow_title": "OWASP Security Audit",
+      "total_duration_seconds": 158.897696,
+      "total_toolcalls_count": 17,
+      "total_assistants_count": 0,
+      "tasks": [
+        {
+          "task_id": 1,
+          "task_title": "Comprehensive OWASP Top 10 2025 Security Assessment of 13.212.197.157",
+          "total_duration_seconds": 158.897696,
+          "total_toolcalls_count": 17,
+          "subtasks": [
+            {
+              "subtask_id": 1,
+              "subtask_title": "Subtask 1: Reconnaissance and Endpoint Discovery",
+              "total_duration_seconds": 158.897696,
+              "total_toolcalls_count": 16
+            },
+            {
+              "subtask_id": 2,
+              "subtask_title": "Subtask 2: Test A01 and A07 (Access Control and Authentication)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 3,
+              "subtask_title": "Subtask 3: Test A02 and A05 (Cryptography and Misconfiguration)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 4,
+              "subtask_title": "Subtask 4: Test A03 (Injection Vulnerabilities)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 5,
+              "subtask_title": "Subtask 5: Test A04 and A08 (Design and Integrity Failures)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 6,
+              "subtask_title": "Subtask 6: Test A06 and A09 (Vulnerable Components and Logging)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 7,
+              "subtask_title": "Subtask 7: Test A10 (Server-Side Request Forgery)",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            },
+            {
+              "subtask_id": 8,
+              "subtask_title": "Subtask 8: Compile Findings and Generate JSON Report",
+              "total_duration_seconds": 0,
+              "total_toolcalls_count": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
